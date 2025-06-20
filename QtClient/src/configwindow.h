@@ -30,6 +30,7 @@ private slots:
 private:
     void setupUI();
     void loadCurrentPath();
+    void loadStyleSheet();
     void saveNukePath(const QString &path);
     QString getNukePathFromFile();
     void executeRegistryCommands();
@@ -42,7 +43,6 @@ private:
     QPushButton *browseButton;
     QPushButton *saveButton;
     QPushButton *applyButton;
-    QLabel *titleLabel;
     QLabel *descriptionLabel;
 };
 

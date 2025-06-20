@@ -8,6 +8,10 @@
 #include <QPalette>
 #include <QProcess>
 #include <QThread>
+#include <QScrollArea>
+#include <QGroupBox>
+#include <QTimer>
+#include <QSizePolicy>
 #include "logger.h"
 
 ConfigWindow::ConfigWindow(QWidget *parent)
@@ -17,129 +21,188 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     loadCurrentPath();
 
     // Configurar ventana
-    setWindowTitle("NukeX Path Configuration");
-    setFixedSize(500, 280);
+    setWindowTitle("LGA OpenInNukeX Config");
+    setFixedSize(900, 600);
 
-    // Establecer color de fondo #161616
-    setStyleSheet("QWidget { background-color: #161616; color: #ffffff; }");
+    // Cargar estilo QSS
+    loadStyleSheet();
 }
 
 void ConfigWindow::setupUI()
 {
-    // Layout principal
+    // Crear el layout principal
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(20);
-    mainLayout->setContentsMargins(30, 30, 30, 30);
-
-    // Título
-    titleLabel = new QLabel("NukeX", this);
-    QFont titleFont = titleLabel->font();
-    titleFont.setPointSize(24);
-    titleFont.setBold(true);
-    titleLabel->setFont(titleFont);
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("QLabel { color: #ffffff; margin-bottom: 10px; }");
-
-    // Campo de texto para la ruta
-    nukePathEdit = new QLineEdit(this);
-    nukePathEdit->setPlaceholderText("Selecciona la ruta de NukeX.exe o Nuke.exe");
-    nukePathEdit->setStyleSheet(
-        "QLineEdit {"
-        "    background-color: #2a2a2a;"
-        "    border: 1px solid #404040;"
-        "    border-radius: 4px;"
-        "    padding: 8px;"
-        "    font-size: 12px;"
-        "    color: #ffffff;"
-        "}"
-        "QLineEdit:focus {"
-        "    border: 1px solid #0078d4;"
-        "}");
-
-    // Layout horizontal para el campo de texto y botón Browse
-    QHBoxLayout *pathLayout = new QHBoxLayout();
-    pathLayout->addWidget(nukePathEdit);
-
-    // Botón Browse
-    browseButton = new QPushButton("BROWSE", this);
-    browseButton->setFixedSize(80, 32);
-    browseButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #404040;"
-        "    border: 1px solid #505050;"
-        "    border-radius: 4px;"
-        "    color: #ffffff;"
-        "    font-weight: bold;"
-        "    font-size: 10px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #505050;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #303030;"
-        "}");
-
-    pathLayout->addWidget(browseButton);
-
-    // Texto descriptivo y botón Apply
-    QHBoxLayout *applyLayout = new QHBoxLayout();
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
     
-    descriptionLabel = new QLabel("Use this app to open .nk files in your preferred NukeX version", this);
-    descriptionLabel->setStyleSheet(
-        "QLabel {"
-        "    color: #cccccc;"
-        "    font-size: 11px;"
-        "    padding: 5px;"
-        "}");
+    // Crear un QScrollArea para permitir desplazamiento
+    QScrollArea *scrollArea = new QScrollArea(this);
+    scrollArea->setObjectName("darkScrollArea");
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    
+    // Asegurar que el QScrollArea ocupe todo el espacio disponible
+    scrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    // Contenedor central para limitar el ancho y centrar el contenido
+    QWidget *centralWidget = new QWidget();
+    centralWidget->setObjectName("centralSettingsWidget");
+    
+    // Permitir que se ajuste al contenido
+    centralWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    
+    // Crear un layout para centrar el contenido horizontalmente
+    QHBoxLayout *horizontalCenterLayout = new QHBoxLayout(centralWidget);
+    horizontalCenterLayout->setContentsMargins(0, 0, 0, 20);
+    horizontalCenterLayout->setSpacing(0);
+    
+    // Crear un widget contenedor para el contenido real
+    QWidget *contentWidget = new QWidget();
+    contentWidget->setObjectName("contentSettingsWidget");
+    contentWidget->setFixedWidth(700); // Ancho para todas las cajas principales
+
+    // Layout para el contenido
+    QVBoxLayout *centralLayout = new QVBoxLayout(contentWidget);
+    centralLayout->setContentsMargins(20, 20, 20, 20);
+    centralLayout->setSpacing(15);
+    
+    // Agregar el widget de contenido al layout horizontal centrado
+    horizontalCenterLayout->addStretch();
+    horizontalCenterLayout->addWidget(contentWidget);
+    horizontalCenterLayout->addStretch();
+    
+    // Asignar el widget central al área de desplazamiento
+    scrollArea->setWidget(centralWidget);
+    
+    // Agregar el área de desplazamiento al layout principal
+    mainLayout->addWidget(scrollArea, 1);
+    
+    // ------------------------------------------------------------------------------------------------
+    // Grupo de configuración de File Association
+    QGroupBox *fileAssociationGroup = new QGroupBox(contentWidget);
+    fileAssociationGroup->setObjectName("settingsGroup");
+    fileAssociationGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    QVBoxLayout *fileAssociationLayout = new QVBoxLayout(fileAssociationGroup);
+    fileAssociationLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
+    fileAssociationLayout->setContentsMargins(20, 10, 20, 10);
+    fileAssociationLayout->setSpacing(10);
+    
+    // Título principal de File Association
+    QLabel *fileAssociationTitle = new QLabel("File Association", fileAssociationGroup);
+    fileAssociationTitle->setObjectName("sectionTitle");
+    fileAssociationLayout->addWidget(fileAssociationTitle);
+    fileAssociationLayout->addSpacing(10);
+
+    // Texto descriptivo
+    descriptionLabel = new QLabel("Associate .nk files with LGA_OpenInNukeX to open them directly in your preferred NukeX version", fileAssociationGroup);
     descriptionLabel->setWordWrap(true);
+    descriptionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 14px; }");
+    fileAssociationLayout->addWidget(descriptionLabel);
+    fileAssociationLayout->addSpacing(15);
+
+    // Botón Apply para asociación de archivos
+    QHBoxLayout *applyLayout = new QHBoxLayout();
+    applyLayout->setContentsMargins(0, 0, 0, 0);
+    applyLayout->setSpacing(10);
     
     applyButton = new QPushButton("APPLY", this);
-    applyButton->setFixedSize(80, 32);
-    applyButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #404040;"
-        "    border: 1px solid #505050;"
-        "    border-radius: 4px;"
-        "    color: #ffffff;"
-        "    font-weight: bold;"
-        "    font-size: 10px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #505050;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #303030;"
-        "}");
+    applyButton->setFixedHeight(40);
+    applyButton->setProperty("class", "secondary");
     
-    applyLayout->addWidget(descriptionLabel);
+    applyLayout->addStretch();
     applyLayout->addWidget(applyButton);
+    
+    fileAssociationLayout->addLayout(applyLayout);
+    
+    // Agregar el grupo de File Association al layout central
+    centralLayout->addWidget(fileAssociationGroup);
+    
+    // ------------------------------------------------------------------------------------------------
+    // Grupo de configuración de Preferred Nuke Version
+    QGroupBox *nukeVersionGroup = new QGroupBox(contentWidget);
+    nukeVersionGroup->setObjectName("settingsGroup");
+    nukeVersionGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    QVBoxLayout *nukeVersionLayout = new QVBoxLayout(nukeVersionGroup);
+    nukeVersionLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
+    nukeVersionLayout->setContentsMargins(20, 0, 20, 10);
+    
+    // Título principal de Preferred Nuke Version
+    QLabel *nukeVersionTitle = new QLabel("Preferred Nuke Version", nukeVersionGroup);
+    nukeVersionTitle->setObjectName("sectionTitle");
+    nukeVersionLayout->addWidget(nukeVersionTitle);
+    nukeVersionLayout->addSpacing(10);
 
-    // Botón Save
-    saveButton = new QPushButton("SAVE", this);
-    saveButton->setFixedSize(100, 35);
-    saveButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #0078d4;"
-        "    border: none;"
-        "    border-radius: 6px;"
-        "    color: #ffffff;"
-        "    font-weight: bold;"
-        "    font-size: 12px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #106ebe;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #005a9e;"
-        "}");
+    // Crear layout horizontal para el campo de path y el botón browse
+    QHBoxLayout *nukePathLayout = new QHBoxLayout();
+    nukePathLayout->setContentsMargins(0, 0, 0, 0);
+    nukePathLayout->setSpacing(10);
+    
+    // Campo de entrada para la ruta de NukeX
+    nukePathEdit = new QLineEdit(nukeVersionGroup);
+    nukePathEdit->setPlaceholderText("Path to NukeX executable");
+    
+    // Botón Browse para seleccionar la ruta
+    browseButton = new QPushButton("BROWSE", nukeVersionGroup);
+    browseButton->setFixedHeight(40);
+    browseButton->setProperty("class", "secondary");
+    
+    // Agregar los elementos al layout horizontal
+    nukePathLayout->addWidget(nukePathEdit);
+    nukePathLayout->addWidget(browseButton);
+    
+    // Agregar el layout horizontal al layout vertical de Nuke Version
+    nukeVersionLayout->addLayout(nukePathLayout);
+    nukeVersionLayout->addSpacing(10);
+    
+    // Crear etiqueta y posicionarla absolutamente ENCIMA del campo
+    QLabel *nukePathLabel = new QLabel("NukeX Path", contentWidget);
+    nukePathLabel->setObjectName("fieldLabel");
+    nukePathLabel->adjustSize();
+    
+    // Posicionar la etiqueta después de que el layout se haya establecido
+    QTimer::singleShot(0, [=]() {
+        // Mapear las coordenadas del nukeVersionGroup al contentWidget
+        QPoint groupPos = nukeVersionGroup->mapTo(contentWidget, QPoint(0, 0));
+        
+        // Posicionar etiqueta sobre el campo con ajuste en Y
+        nukePathLabel->move(groupPos.x() + nukePathEdit->x() + 50, 
+                           groupPos.y() + nukePathEdit->y() + 88);
 
-    // Agregar widgets al layout principal
-    mainLayout->addWidget(titleLabel);
-    mainLayout->addLayout(pathLayout);
-    mainLayout->addLayout(applyLayout);
-    mainLayout->addWidget(saveButton, 0, Qt::AlignCenter);
+        // Forzar que esté por encima de todo
+        nukePathLabel->raise();
+        
+        // Asegurar que el label esté en el tope de la pila de widgets
+        nukePathLabel->setParent(contentWidget);
+        
+        // Volver a mostrar y ajustar después del cambio de padre
+        nukePathLabel->show();
+        nukePathLabel->adjustSize();
+    });
+    
+    // Agregar el grupo de Nuke Version al layout central
+    centralLayout->addWidget(nukeVersionGroup);
 
-    // Conectar señales
+    // Boton de SAVE
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    buttonLayout->setContentsMargins(0, 10, 0, 0);
+    buttonLayout->setSpacing(10);
+
+    saveButton = new QPushButton("SAVE", contentWidget);
+    saveButton->setFixedHeight(40);
+    saveButton->setMinimumWidth(100);
+    saveButton->setProperty("class", "action");
+
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(saveButton);
+
+    centralLayout->addLayout(buttonLayout);
+    
+    // Agregar un stretch al final para evitar que los widgets se estiren verticalmente
+    centralLayout->addStretch(1);
+
+    // Conectar señales y slots
     connect(browseButton, &QPushButton::clicked, this, &ConfigWindow::browseNukePath);
     connect(saveButton, &QPushButton::clicked, this, &ConfigWindow::saveConfiguration);
     connect(applyButton, &QPushButton::clicked, this, &ConfigWindow::applyFileAssociation);
@@ -535,5 +598,27 @@ bool ConfigWindow::setFileAssociation()
         
         Logger::logInfo(QString("Asociación directa resultado: %1").arg(result ? "exitoso" : "falló"));
         return result;
+    }
+}
+
+void ConfigWindow::loadStyleSheet()
+{
+    // Buscar el archivo QSS en el directorio de la aplicación
+    QString qssPath = QDir(QCoreApplication::applicationDirPath()).filePath("dark_theme.qss");
+    
+    QFile file(qssPath);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString styleSheet = file.readAll();
+        file.close();
+        
+        // Aplicar el estilo a la aplicación
+        this->setStyleSheet(styleSheet);
+        
+        Logger::logInfo(QString("Estilo QSS cargado desde: %1").arg(qssPath));
+    } else {
+        Logger::logInfo(QString("No se pudo cargar el archivo QSS desde: %1").arg(qssPath));
+        
+        // Fallback: aplicar estilo básico
+        setStyleSheet("QWidget { background-color: #161616; color: #B2B2B2; }");
     }
 }

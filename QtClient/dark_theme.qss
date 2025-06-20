@@ -1,0 +1,419 @@
+/* Tema oscuro para LGA_OpenInNukeX */
+
+/* Estilo general para la aplicación */
+QWidget {
+    background-color: #161616; /* bg_principal */
+    color: #B2B2B2;  /* txt_principal */
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0px;
+}
+
+/* Estilo para labels */
+QLabel {
+    color: #B2B2B2;  /* txt_principal */
+    background-color: transparent;
+    padding: 2px 0px;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0px;
+}
+
+/* Estilo para los menús (❌❌) */
+QMenuBar {
+    background-color: #BC8320;
+    color: #4FBE29;
+}
+
+QMenuBar::item:selected {
+    background-color: #C0B51B; /* ❌❌❌ */
+}
+
+QMenu {
+    background-color: #1d1d1d; /* Este es el color raro que aparecia amarillo en dropdowns en mac */
+    color: #528532;          /* ❌❌❌ */
+    border: 1px solid border_principal; /* Borde del popover */
+}
+
+QMenu::item:selected {
+    background-color: #C122DA; /* ❌❌❌ */
+}
+
+/* ------------------------------ Estilos para botones ------------------------------ */
+/* Botón primario gris */
+QPushButton {
+    background-color: #2a2a2a; /* boton_gris_oscuro */
+    color: #B2B2B2; /* txt_principal */
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 14px;
+    font-weight: 450;
+    letter-spacing: 0px;
+}
+
+QPushButton:hover {
+    background-color: #3a3a3a; /* boton_gris_oscu_hover */
+}
+
+QPushButton:pressed {
+    background-color: #3a3a3a; /* boton_gris_oscu_hover */
+}
+
+QPushButton:disabled {
+    background-color: #2a2a2a; /* boton_gris_oscuro */
+    color: #9D9D9D;
+}
+
+/* Botón secundario (gris) */
+QPushButton.secondary {
+    background-color: #3b3b3b;
+    color: #B2B2B2; /* txt_principal */
+    border-radius: 13px;
+}
+
+QPushButton.secondary:hover {
+    background-color: #636363;
+}
+
+QPushButton.secondary:pressed {
+    background-color: #636363;
+}
+
+/* Botón de acción (violeta) */
+QPushButton.action {
+    background-color: #443a91; /* violeta_oscuro */
+    color: #B2B2B2; /* txt_principal */
+    font-weight: bold;
+    font-size: 11pt;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+QPushButton.action:hover {
+    background-color: #774dcb; /* violeta_claro */
+}
+
+QPushButton.action:pressed {
+    background-color: #774dcb; /* violeta_claro */
+}
+
+/* ------------------------------ Estilos para campos de entrada de texto ------------------------------ */
+QLineEdit, QTextEdit {
+    background-color: #1d1d1d; /* bg_items */
+    color: #B2B2B2; /* txt_principal */
+    border: 1px solid #303030; /* border_principal */
+    padding: 8px;
+    padding-top: 12px;
+    border-radius: 3px;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0px;
+}
+
+/* Estilo para dropdowns comunes (LOS DE SETTINGS SON ESTOS) (solo la caja sin desplegar) ✅ */
+QComboBox {
+    background-color: bg_items; 
+    color: txt_principal; 
+    border: 1px solid border_principal; 
+    padding: 6px 8px;
+    border-radius: 3px;
+    min-height: 20px;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 15px;  /* Tamaño body2 en Material-UI */
+    font-weight: 400;  /* Regular weight para body text */
+    line-height: 1.4;  /* Espaciado vertical como en la versión anterior */
+    letter-spacing: 0px;  /* Espaciado de letras sutil */    
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid border_principal; /* Borde izquierdo de la flechita del dropdown ✅ */
+}
+
+/* Añadiendo flecha SVG a los ComboBox generales (settings) */
+QComboBox::down-arrow {
+    image: url(:/icons/dropdown_arrow_white.svg);
+    width: 8px;
+    height: 8px;
+}
+
+/* Estilo específico para el dropdown del toolbar */
+QComboBox#projectFilter, QComboBox#statusFilter, QComboBox#sortOrderFilter, QComboBox#assigneeFilter {
+    background-color: bg_items; 
+    color: txt_principal; 
+    border: 1px solid border_principal; 
+    padding: 2px 8px;  /* Padding vertical aumentado a 6px */
+    border-radius: 3px;
+    min-height: 20px;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0px;
+}
+
+QComboBox#projectFilter::drop-down, QComboBox#statusFilter::drop-down, QComboBox#sortOrderFilter::drop-down, QComboBox#assigneeFilter::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border-left: 1px solid border_principal;
+}
+
+/* Añadiendo flecha SVG a los ComboBox del toolbar */
+QComboBox#projectFilter::down-arrow, QComboBox#statusFilter::down-arrow, QComboBox#sortOrderFilter::down-arrow, QComboBox#assigneeFilter::down-arrow {
+    image: url(:/icons/dropdown_arrow_white.svg);
+    width: 8px;
+    height: 8px;
+}
+
+/* Estilo específico para el filtro de proyectos cuando está filtrado (flecha roja) */
+QComboBox#projectFilter[filtered="true"]::down-arrow {
+    image: url(:/icons/dropdown_arrow_red.svg);
+    width: 8px;
+    height: 8px;
+}
+
+/* Estilo específico para el filtro de status cuando está filtrado (flecha roja) */
+QComboBox#statusFilter[filtered="true"]::down-arrow {
+    image: url(:/icons/dropdown_arrow_red.svg);
+    width: 8px;
+    height: 8px;
+}
+
+/* Estilo específico para el filtro de assignees cuando está filtrado (flecha roja) */
+QComboBox#assigneeFilter[filtered="true"]::down-arrow {
+    image: url(:/icons/dropdown_arrow_red.svg);
+    width: 8px;
+    height: 8px;
+}
+
+/* ------------------------------ Estilos para Settings ------------------------------ */
+/* Estilo para los títulos de cada campo de entrada de texto que están sobre las líneas de los bordes */
+QLabel#fieldLabel {
+    background-color: #1d1d1d; /* bg_items */
+    padding: 0 2px;
+    color: #B2B2B2; /* txt_principal */
+    font-weight: normal;
+    font-size: 9pt;
+    border: none;
+    margin-bottom: 20px;
+    position: relative;
+    width: auto !important;
+    min-width: 0;
+}
+
+/* Estilo para los títulos de cada sección de settings (File Association, Preferred Nuke Version) */
+QLabel#sectionTitle {
+    color: #E0E0E0;
+    font-family: "Inter", Arial, Helvetica;
+    font-weight: 500;
+    font-size: 20px;
+    letter-spacing: 0px;
+}
+
+/* Estilo para fondos de cada widget de settings */
+QGroupBox {
+    background-color: #1d1d1d; /* bg_items */
+    border: none;
+    border-radius: 4px;
+    margin-top: 1ex;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* Estilo para el texto del checkbox de settings ✅ */
+QCheckBox {
+    color: txt_principal; /* Texto del checkbox de settings ✅ */
+    padding: 5px;
+    background-color: transparent;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    background-color: #2A2A2A; /* Fondo del checkbox sin seleccionar ✅ */
+    border: 1px solid border_principal; /* Borde del checkbox sin seleccionar ✅ */
+    border-radius: 3px;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #2A2A2A;   /* Fondo del checkbox seleccionado ✅ */
+    image: url(:/icons/checkmark.svg);
+}
+
+/* ------------------------------ Estilos para scrollbars ------------------------------ */
+QScrollBar:vertical {
+    background-color: #161616; /* bg_principal */
+    width: 12px;
+    margin: 0px;
+    border-radius: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #1d1d1d; /* bg_items */
+    min-height: 30px;
+    border-radius: 3px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #303030; /* border_principal */
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+/* Estilo específico para el área de desplazamiento */
+QScrollArea#darkScrollArea {
+    background-color: #161616; /* bg_principal */
+    border: none;
+}
+
+/* Estilo para el widget central de settings */
+QScrollArea#darkScrollArea QWidget#centralSettingsWidget {
+    background-color: #161616; /* bg_principal */
+    padding-bottom: 20px;
+}
+
+/* Estilo para el widget de settings */
+QScrollArea#darkScrollArea QWidget#contentSettingsWidget {
+    background-color: #161616; /* bg_principal */
+}
+
+/* Estilo para grupos sin borde */
+QGroupBox#settingsGroup {
+    border: none;
+}
+
+/* ------------------------------ Estilo general para selección de texto ------------------------------ */
+* {
+    selection-background-color: #383838;
+    selection-color: #ffffff;
+}
+
+/* ------------------------------ Estilos específicos para el dropdown de status y su popup ------------------------------ */
+QComboBox#statusComboBox {
+    border: none;
+    border-radius: 3px;
+    padding: 0 8px;
+    min-height: 24px;
+    max-height: 24px;
+    font-size: 13px;
+    font-family: "Inter", Arial, Helvetica;
+}
+
+/* Centrar el texto y hacer toda el área clickeable */
+QComboBox#statusComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: right;
+    width: 28px;
+    border: none;
+    background: transparent;
+}
+
+QComboBox#statusComboBox::down-arrow {
+    image: url(:/icons/dropdown_arrow.svg);
+    width: 16px;
+    height: 16px;
+}
+
+/* Estilo para el texto cuando el combobox está cerrado */
+QComboBox#statusComboBox {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+/* Estilos para el popup */
+QComboBox#statusComboBox QAbstractItemView {
+    background-color: #1E1E1E;
+    border: 1px solid #2F2F2F;
+    border-radius: 3px;
+    padding: 4px;
+    color: txt_principal;
+    selection-background-color: #2F2F2F;
+    selection-color: txt_principal;
+}
+
+QComboBox#statusComboBox QAbstractItemView::item {
+    min-height: 32px;
+    padding: 4px 8px;
+}
+
+QComboBox#statusComboBox QAbstractItemView::item:selected {
+    background-color: #2F2F2F;
+}
+
+/* ------------------------------ Estilos para la tabla de versiones ------------------------------ */
+QWidget#shotCardVersions {
+    background-color: transparent;
+}
+
+QWidget#versionRow {
+    background-color: transparent;
+}
+
+QWidget#versionLocalGroup, QWidget#versionRemoteGroup {
+    background-color: transparent;
+}
+
+/* Contenedores para el texto MOV Review y el botón FlowNotes */
+QWidget#movReviewTextContainer {
+    background-color: transparent;
+    margin-right: 0;
+    padding-right: 0;
+}
+
+QWidget#flowNotesButtonContainer {
+    background-color: transparent;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+QLabel#versionTypeLabel {
+    color: #ADADAD;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: transparent;
+}
+
+QLabel#versionNumberLabel {
+    color: #ADADAD;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: transparent;
+}
+
+/* ------------------------------ Estilos para tooltips personalizados ------------------------------ */
+/* Estilo para el tooltip */
+QLabel#tooltipLabel {
+    color: txt_principal;
+    background-color: transparent;
+    font-family: "Inter", Arial, Helvetica;
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0px;
+    padding: 0px;
+    margin: 0;
+    width: auto;
+}
+
+

@@ -65,16 +65,23 @@ SetUserFTA es una herramienta opcional desarrollada por Christoph Kolbicz que me
 
 ### Primera Ejecución
 
-1. La aplicación abrirá automáticamente la ventana de configuración
-2. **Configurar ruta de NukeX**:
-   - Clic en "Examinar"
-   - Seleccionar `Nuke15.1.exe` (o tu versión)
-   - Clic en "Guardar Configuración"
+1. La aplicación abrirá automáticamente la ventana de configuración con una **interfaz moderna y oscura**
+2. **Sección File Association**:
+   - Texto descriptivo sobre la funcionalidad
+   - Botón "APPLY" para establecer la asociación de archivos .nk
+   
+3. **Sección Preferred Nuke Version**:
+   - Campo de entrada para la ruta de NukeX
+   - Botón "BROWSE" para seleccionar el ejecutable
+   - Botón "SAVE" para guardar la configuración
 
-3. **Establecer asociación de archivos**:
-   - Clic en "APPLY" en la interfaz
-   - La aplicación ejecuta automáticamente el proceso completo de asociación
-   - Confirmar en el mensaje de éxito
+### Interfaz de Usuario
+
+La aplicación ahora cuenta con:
+- **Tema oscuro moderno** con tipografía Inter
+- **Diseño responsive** con scroll automático
+- **Dos secciones principales** organizadas en tarjetas
+- **Colores consistentes** con el ecosistema de aplicaciones LGA
 
 ### Verificación
 
@@ -93,12 +100,13 @@ LGA_OpenInNukeX/
 │   ├── src/                 # Código fuente
 │   │   ├── main.cpp         # Punto de entrada
 │   │   ├── nukeopener.cpp   # Lógica principal
-│   │   ├── configwindow.cpp # Ventana de configuración
+│   │   ├── configwindow.cpp # Ventana de configuración moderna
 │   │   └── logger.cpp       # Sistema de logging
 │   ├── resources/           # Recursos (iconos)
+│   ├── dark_theme.qss       # Tema oscuro moderno
 │   ├── scripts/            # Scripts de build
 │   │   ├── compilar.bat    # Compilación
-│   │   ├── deploy.bat      # Deploy portable
+│   │   ├── deploy.bat      # Deploy portable (incluye QSS)
 │   │   └── instalador.bat  # Crear instalador
 │   └── CMakeLists.txt      # Configuración CMake
 ├── Developement/           # Versión Python original
@@ -143,6 +151,7 @@ instalador.bat
 ### Configuración
 - **`nukeXpath.txt`**: Ruta de NukeX configurada
 - **`app_icon.ico`**: Icono para asociaciones de archivos
+- **`dark_theme.qss`**: Archivo de estilo para la interfaz moderna
 
 ### Logs
 - **`logs/LGA_OpenInNukeX_YYYY-MM-DD.log`**: Logs detallados de operaciones

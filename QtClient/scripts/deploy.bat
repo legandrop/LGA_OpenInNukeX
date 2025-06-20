@@ -89,6 +89,15 @@ if exist "deploy\app_icon.ico" (
 )
 
 echo.
+echo Copiando archivo de tema...
+copy "..\dark_theme.qss" "deploy\dark_theme.qss" >nul 2>&1
+if exist "deploy\dark_theme.qss" (
+    echo ✓ Archivo dark_theme.qss copiado exitosamente
+) else (
+    echo ⚠ Warning: No se pudo copiar dark_theme.qss
+)
+
+echo.
 echo Desplegando dependencias de Qt...
 cd deploy
 windeployqt.exe LGA_OpenInNukeX.exe
@@ -143,6 +152,12 @@ if exist "SetUserFTA.exe" (
     echo ✓ SetUserFTA.exe: OK
 ) else (
     echo ❌ SetUserFTA.exe: FALTA (requerido para asociaciones)
+)
+
+if exist "dark_theme.qss" (
+    echo ✓ dark_theme.qss: OK
+) else (
+    echo ⚠ dark_theme.qss: FALTA (tema visual)
 )
 
 echo.
