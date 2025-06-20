@@ -120,8 +120,9 @@ void ConfigWindow::loadCurrentPath()
 
 QString ConfigWindow::getNukePathFromFile()
 {
-    QString appDir = QApplication::applicationDirPath();
-    QString filepath = QDir(appDir).filePath("nukeXpath.txt");
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(configDir); // Crear directorio si no existe
+    QString filepath = QDir(configDir).filePath("nukeXpath.txt");
     
     QFile file(filepath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -183,8 +184,9 @@ void ConfigWindow::saveConfiguration()
 
 void ConfigWindow::saveNukePath(const QString &path)
 {
-    QString appDir = QApplication::applicationDirPath();
-    QString filepath = QDir(appDir).filePath("nukeXpath.txt");
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(configDir); // Crear directorio si no existe
+    QString filepath = QDir(configDir).filePath("nukeXpath.txt");
     
     QFile file(filepath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {

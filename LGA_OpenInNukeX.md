@@ -30,20 +30,32 @@ Cliente original en Python compilado con PyInstaller. Recibe ruta de archivo .nk
 ### 3. Cliente Qt/C++ (Actual)
 **Directorio**: `LGA_OpenInNukeX/QtClient/`  
 **Archivos principales**:
-- `LGA_OpenInNukeX/QtClient/main.cpp`: Punto de entrada, manejo de argumentos
+- `LGA_OpenInNukeX/QtClient/main.cpp`: Punto de entrada, manejo de argumentos, configuración AppData
 - `LGA_OpenInNukeX/QtClient/nukeopener.h`: Definición de clase NukeOpener 
 - `LGA_OpenInNukeX/QtClient/nukeopener.cpp`: Lógica de conexión TCP y lanzamiento de NukeX
-- `LGA_OpenInNukeX/QtClient/CMakeLists.txt`: Configuración CMake
-- `LGA_OpenInNukeX/QtClient/compilar.bat`: Script compilación desarrollo
-- `LGA_OpenInNukeX/QtClient/deploy.bat`: Script despliegue producción
+- `LGA_OpenInNukeX/QtClient/configwindow.h`: Definición de ventana de configuración
+- `LGA_OpenInNukeX/QtClient/configwindow.cpp`: Interfaz de configuración con fondo #161616
+- `LGA_OpenInNukeX/QtClient/logger.h`: Sistema de logging a AppData
+- `LGA_OpenInNukeX/QtClient/logger.cpp`: Implementación de logs detallados
+- `LGA_OpenInNukeX/QtClient/CMakeLists.txt`: Configuración CMake sin ventana de consola
+- `LGA_OpenInNukeX/QtClient/deploy.bat`: Script despliegue producción con limpieza automática
+- `LGA_OpenInNukeX/QtClient/limpiar.bat`: Script limpieza de archivos de compilación
 
-Cliente desarrollado en Qt/C++ para evitar falsos positivos de antivirus del ejecutable Python. Funcionalidad idéntica al cliente Python pero con interfaz de configuración cuando se ejecuta sin argumentos.
+Cliente desarrollado en Qt/C++ para evitar falsos positivos de antivirus del ejecutable Python. Ejecuta sin ventana de consola y guarda configuración en AppData. Con argumentos procesa archivos .nk, sin argumentos muestra interfaz de configuración moderna.
 
 **Funciones principales**:
+- `main()`: Configuración de organización/aplicación para QStandardPaths, logging de directorio AppData
 - `NukeOpener::sendToNuke()`: Conexión TCP con timeout de 10 segundos
+- `NukeOpener::getNukePathFromFile()`: Lee configuración desde AppData con mensajes informativos
 - `NukeOpener::onConnected()`: Envío de comando "run_script||ruta_archivo"
-- `NukeOpener::onErrorOccurred()`: Manejo de errores de conexión
 - `NukeOpener::openNukeWithFile()`: Lanzamiento de NukeX con argumentos --nukex
+- `ConfigWindow::saveNukePath()`: Guarda configuración en AppData con creación automática de directorios
+- `Logger::getLogFilePath()`: Retorna ruta de log en AppData con creación automática de directorios
+
+**Configuración y archivos**:
+- **Configuración**: `C:\Users\[usuario]\AppData\Roaming\LGA\LGA_OpenInNukeX_Qt\nukeXpath.txt`
+- **Logs**: `C:\Users\[usuario]\AppData\Roaming\LGA\LGA_OpenInNukeX_Qt\LGA_OpenInNukeX_Qt.log`
+- **Ejecutable**: `LGA_OpenInNukeX_Qt.exe` (sin ventana de consola)
 
 ### 4. Integración con Hiero
 **Archivo**: `Python/Startup/LGA_NKS/LGA_NKS_OpenInNukeX.py`  

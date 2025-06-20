@@ -9,9 +9,8 @@ set MINGW_DIR=C:\Qt\Tools\mingw1310_64
 set PATH=%QT_DIR%\bin;%MINGW_DIR%\bin;%PATH%
 
 REM Limpiar archivos anteriores
-if exist "Makefile" del Makefile
-if exist "*.o" del *.o
-if exist "LGA_OpenInNukeX_Qt.exe" del LGA_OpenInNukeX_Qt.exe
+echo Limpiando archivos anteriores...
+call limpiar.bat >nul 2>&1
 
 REM Generar Makefile
 echo Generando Makefile con qmake...

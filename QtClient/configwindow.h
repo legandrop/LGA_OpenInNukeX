@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QApplication>
+#include <QStandardPaths>
 
 class ConfigWindow : public QWidget
 {

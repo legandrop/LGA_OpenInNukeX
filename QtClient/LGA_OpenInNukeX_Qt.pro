@@ -1,7 +1,8 @@
 QT += core widgets network
 
 CONFIG += c++17
-CONFIG += console
+CONFIG -= console
+CONFIG -= app_bundle
 
 TARGET = LGA_OpenInNukeX_Qt
 TEMPLATE = app
@@ -9,11 +10,13 @@ TEMPLATE = app
 SOURCES += \
     main.cpp \
     nukeopener.cpp \
-    configwindow.cpp
+    configwindow.cpp \
+    logger.cpp
 
 HEADERS += \
     nukeopener.h \
-    configwindow.h
+    configwindow.h \
+    logger.h
 
 # Configuración para Windows
 win32 {

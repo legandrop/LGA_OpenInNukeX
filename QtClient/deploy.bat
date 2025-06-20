@@ -8,6 +8,10 @@ set QT_DIR=C:\Qt\6.8.2\mingw_64
 set MINGW_DIR=C:\Qt\Tools\mingw1310_64
 set PATH=%QT_DIR%\bin;%MINGW_DIR%\bin;%PATH%
 
+REM Limpiar archivos anteriores
+echo Limpiando archivos anteriores...
+call limpiar.bat >nul 2>&1
+
 REM Crear directorio de release si no existe
 if not exist "release" mkdir release
 cd release

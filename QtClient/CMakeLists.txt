@@ -17,6 +17,8 @@ add_executable(LGA_OpenInNukeX_Qt
     nukeopener.h
     configwindow.cpp
     configwindow.h
+    logger.cpp
+    logger.h
 )
 
 # Enlazar con las librerías de Qt
