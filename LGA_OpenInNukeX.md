@@ -11,35 +11,38 @@
 - **📝 Logging detallado**: Registro completo de operaciones para debugging
 - **🔒 Seguro**: Evita falsos positivos de antivirus (reemplaza ejecutable Python)
 
-## 🆕 Nuevo en v0.14: Solución Definitiva para Asociaciones
+## 🆕 Asociación de Archivos Robusta
 
-### ⚠️ Problemas Resueltos: Windows 10/11 "App Default Reset" y "Comando Vacío"
+### ✅ Método Híbrido Implementado
 
-**Problemas anteriores**: 
-- Windows 10/11 detectaba automáticamente cuando las aplicaciones modificaban las asociaciones de archivos directamente en el registro y las **reseteaba como "hijacking"**, mostrando el mensaje "An app default was reset"
-- Las asociaciones aparecían con **"comando vacío"** debido a conflictos en el registro UserChoice
+La aplicación utiliza un **método híbrido robusto** que combina múltiples técnicas para garantizar que las asociaciones de archivos .nk funcionen correctamente:
 
-**✅ Soluciones implementadas**: 
-- **Integración completa con SetUserFTA** - la única herramienta que puede establecer asociaciones de archivos sin que Windows las detecte como modificaciones no autorizadas
-- **Separación del registro**: Solo se registra el ProgID básico, SetUserFTA maneja completamente UserChoice con el hash correcto
-- **Copia automática de iconos**: El script deploy busca iconos en múltiples ubicaciones para asegurar que se incluyan correctamente
+**Implementación técnica**:
+- **Limpieza inteligente del registro**: Elimina asociaciones conflictivas previas usando comandos `reg delete`
+- **Registro de ProgID**: Crea el identificador `LGA.NukeScript.1` con comando de apertura y icono
+- **SetUserFTA como preferencia**: Si está disponible, utiliza SetUserFTA para asociaciones más robustas
+- **Fallback a PowerShell/reg**: Si SetUserFTA no está disponible, usa comandos directos del registro
+- **Notificación al sistema**: Actualiza el explorador de archivos automáticamente
 
-### 🔧 SetUserFTA Integration
+**Archivos clave**:
+- `QtClient/src/configwindow.cpp`: Funciones `applyFileAssociation()`, `cleanRegistry()`, `registerProgId()`, `setFileAssociation()`
+- `QtClient/src/logger.cpp`: Sistema de logging detallado para debugging
 
-SetUserFTA es una herramienta desarrollada por Christoph Kolbicz que:
+### 🔧 SetUserFTA Integration (Opcional)
+
+SetUserFTA es una herramienta opcional desarrollada por Christoph Kolbicz que mejora la robustez de las asociaciones:
 - **Implementa el algoritmo hash correcto** para UserChoice en Windows 10/11
 - **Evita la detección de "hijacking"** por parte de Windows
 - **Funciona sin permisos de administrador**
-- **Es la solución recomendada por Microsoft IT Pros**
 
-**Integración automática**: El script `deploy.bat` busca SetUserFTA.exe en `scripts/deploy/` y lo incluye automáticamente en el paquete final.
+**Integración automática**: Si `SetUserFTA.exe` está presente en el directorio de la aplicación, se usa automáticamente. Si no está disponible, la aplicación funciona perfectamente con el método de fallback.
 
 ## 📋 Requisitos del Sistema
 
 - **Sistema Operativo**: Windows 10/11 (x64)
 - **NukeX**: Cualquier versión instalada
 - **Permisos**: Usuario estándar (no requiere administrador)
-- **Dependencias**: SetUserFTA.exe (descarga automática)
+- **Dependencias**: Ninguna (SetUserFTA.exe es opcional)
 
 ## 🚀 Instalación y Uso
 
@@ -69,8 +72,8 @@ SetUserFTA es una herramienta desarrollada por Christoph Kolbicz que:
    - Clic en "Guardar Configuración"
 
 3. **Establecer asociación de archivos**:
-   - Clic en "Aplicar Asociación de Archivos"
-   - La aplicación usará SetUserFTA para establecer la asociación correctamente
+   - Clic en "APPLY" en la interfaz
+   - La aplicación ejecuta automáticamente el proceso completo de asociación
    - Confirmar en el mensaje de éxito
 
 ### Verificación
@@ -78,7 +81,7 @@ SetUserFTA es una herramienta desarrollada por Christoph Kolbicz que:
 Después de la configuración:
 - Los archivos `.nk` mostrarán el icono de LGA_OpenInNukeX
 - Doble clic en un `.nk` abrirá NukeX automáticamente
-- No aparecerán mensajes de "App default reset"
+- La asociación funciona de forma confiable en Windows 10/11
 
 ## 🔧 Desarrollo y Compilación
 
@@ -95,7 +98,7 @@ LGA_OpenInNukeX/
 │   ├── resources/           # Recursos (iconos)
 │   ├── scripts/            # Scripts de build
 │   │   ├── compilar.bat    # Compilación
-│   │   ├── deploy.bat      # Deploy + SetUserFTA
+│   │   ├── deploy.bat      # Deploy portable
 │   │   └── instalador.bat  # Crear instalador
 │   └── CMakeLists.txt      # Configuración CMake
 ├── Developement/           # Versión Python original
@@ -117,21 +120,17 @@ LGA_OpenInNukeX/
 git clone <repository-url>
 cd LGA_OpenInNukeX/QtClient
 
-# 2. Descargar SetUserFTA.exe
-# Visita: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-# Coloca SetUserFTA.exe en QtClient/scripts/deploy/
-
-# 3. Compilar y crear paquete deploy (incluye SetUserFTA)
+# 2. Compilar aplicación
 cd scripts
 deploy.bat
 
-# 4. Crear instalador (opcional)
+# 3. Crear instalador (opcional)
 instalador.bat
 ```
 
 ### Scripts de Build
 
-- **`deploy.bat`**: Compila la aplicación en modo Release + crea paquete portable con SetUserFTA
+- **`deploy.bat`**: Compila la aplicación en modo Release + crea paquete portable
 - **`instalador.bat`**: Genera instalador con Inno Setup
 - **`limpiar.bat`**: Limpia archivos de compilación
 
@@ -139,7 +138,7 @@ instalador.bat
 
 ### Ejecutables
 - **`LGA_OpenInNukeX.exe`**: Aplicación principal
-- **`SetUserFTA.exe`**: Herramienta para asociaciones (descarga automática)
+- **`SetUserFTA.exe`**: Herramienta opcional para asociaciones más robustas
 
 ### Configuración
 - **`nukeXpath.txt`**: Ruta de NukeX configurada
@@ -150,27 +149,27 @@ instalador.bat
 
 ## 🔍 Resolución de Problemas
 
-### Problema: "SetUserFTA.exe no encontrado"
-
-**Causa**: SetUserFTA.exe no está en el directorio de la aplicación.
-
-**Solución**:
-1. Descargar SetUserFTA.exe desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-2. Colocar `SetUserFTA.exe` en `QtClient/scripts/deploy/`
-3. Ejecutar `deploy.bat` para compilar y crear paquete completo
-
-### Problema: "Asociación no funciona" o "Comando vacío"
+### Problema: "Asociación no funciona"
 
 **Causas posibles**: 
-- SetUserFTA.exe no está presente
-- Conflicto en el registro UserChoice
-- Windows detectó la asociación como "hijacking"
+- Conflictos en el registro de asociaciones previas
+- Permisos insuficientes para modificar el registro
+- Ruta de NukeX incorrecta
 
 **Solución**:
-1. Verificar que SetUserFTA.exe esté en el mismo directorio que LGA_OpenInNukeX.exe
-2. **IMPORTANTE**: Re-aplicar la asociación desde la ventana de configuración (esto limpia conflictos)
-3. Verificar logs para errores específicos
-4. Si persiste el problema, reiniciar Windows Explorer: `taskkill /f /im explorer.exe ; start explorer.exe`
+1. **Re-aplicar la asociación**: Usar el botón "APPLY" en la ventana de configuración (esto limpia conflictos automáticamente)
+2. **Verificar logs**: Revisar `logs/LGA_OpenInNukeX_YYYY-MM-DD.log` para errores específicos
+3. **Verificar ruta de NukeX**: Asegurar que la ruta configurada sea correcta y el archivo exista
+4. **Reiniciar Explorer**: Si persiste, ejecutar `taskkill /f /im explorer.exe ; start explorer.exe`
+
+### Problema: "SetUserFTA.exe no encontrado" (Mensaje informativo)
+
+**Explicación**: Este es un mensaje informativo, no un error. La aplicación funciona perfectamente sin SetUserFTA.
+
+**Para usar SetUserFTA (opcional)**:
+1. Descargar SetUserFTA.exe desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
+2. Colocar `SetUserFTA.exe` en el mismo directorio que `LGA_OpenInNukeX.exe`
+3. Re-aplicar la asociación usando el botón "APPLY"
 
 ### Problema: "Error al abrir NukeX"
 
@@ -185,10 +184,15 @@ instalador.bat
 
 ### Algoritmo de Asociación de Archivos
 
-1. **Registro básico**: Crea ProgID y comando en `HKEY_CURRENT_USER\Software\Classes`
-2. **SetUserFTA**: Ejecuta `SetUserFTA.exe .nk LGA.NukeScript` para hash correcto
-3. **Notificación**: Llama `SHChangeNotify()` para actualizar explorador
-4. **Verificación**: Confirma que la asociación se estableció correctamente
+La función `applyFileAssociation()` en `QtClient/src/configwindow.cpp` ejecuta el siguiente proceso:
+
+1. **Limpieza del registro** (`cleanRegistry()`): Elimina asociaciones conflictivas previas
+2. **Registro de ProgID** (`registerProgId()`): Crea `LGA.NukeScript.1` con comando de apertura e icono
+3. **Configuración de asociación** (`setFileAssociation()`): 
+   - Prioridad 1: SetUserFTA (si está disponible)
+   - Fallback: PowerShell o comandos `reg` directos
+4. **Notificación al sistema**: Llama `SHChangeNotify()` para actualizar explorador
+5. **Logging detallado**: Registra cada paso para debugging en `logger.cpp`
 
 ### Logging System
 
@@ -215,7 +219,7 @@ Este proyecto está bajo licencia MIT. Ver archivo `LICENSE` para detalles.
 
 ## 🙏 Agradecimientos
 
-- **Christoph Kolbicz** por SetUserFTA - la solución definitiva para asociaciones en Windows 10/11
+- **Christoph Kolbicz** por SetUserFTA - herramienta opcional que mejora la robustez de las asociaciones
 - **Microsoft** por la documentación oficial sobre file associations
 - **Qt Framework** por las herramientas de desarrollo multiplataforma
 
@@ -228,4 +232,4 @@ Para reportar bugs o solicitar funcionalidades:
 
 ---
 
-**LGA_OpenInNukeX v0.14** - Solución definitiva para asociaciones de archivos en Windows 10/11
+**LGA_OpenInNukeX v0.14** - Asociaciones de archivos robustas para Windows 10/11

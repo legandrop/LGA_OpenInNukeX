@@ -11,13 +11,9 @@
 #include <QApplication>
 #include <QStandardPaths>
 #include <QProcess>
-#include <QFileInfo>
-#include <QMessageBox>
-
-#ifdef Q_OS_WIN
-#include <windows.h>
-#include <shlobj.h>
-#endif
+#include <QThread>
+#include <QCoreApplication>
+#include "logger.h"
 
 class ConfigWindow : public QWidget
 {
@@ -36,13 +32,12 @@ private:
     void loadCurrentPath();
     void saveNukePath(const QString &path);
     QString getNukePathFromFile();
-    void associateNkFiles();
-    QString getCurrentExecutablePath();
-    bool registerOfficialProgId(const QString &progId, const QString &exePath);
-    bool executeSetUserFTA(const QString &extension, const QString &progId);
-    void verifyFinalResult(const QString &extension, const QString &progId);
-    void cleanupFileAssociations();
-    
+    void executeRegistryCommands();
+    bool cleanRegistry();
+    bool registerProgId();
+    bool setFileAssociation();
+    bool executeCommand(const QString &program, const QStringList &arguments);
+
     QLineEdit *nukePathEdit;
     QPushButton *browseButton;
     QPushButton *saveButton;
@@ -51,4 +46,4 @@ private:
     QLabel *descriptionLabel;
 };
 
-#endif // CONFIGWINDOW_H 
+#endif // CONFIGWINDOW_H

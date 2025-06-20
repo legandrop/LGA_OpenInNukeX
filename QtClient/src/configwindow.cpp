@@ -1,5 +1,4 @@
 #include "configwindow.h"
-#include "logger.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -7,21 +6,20 @@
 #include <QMessageBox>
 #include <QFont>
 #include <QPalette>
-#include <QSettings>
-#include <QCoreApplication>
-#include <QFileInfo>
 #include <QProcess>
+#include <QThread>
+#include "logger.h"
 
 ConfigWindow::ConfigWindow(QWidget *parent)
     : QWidget(parent)
 {
     setupUI();
     loadCurrentPath();
-    
+
     // Configurar ventana
-    setWindowTitle("LGA OpenInNukeX - v0.14");
-    setFixedSize(600, 280);
-    
+    setWindowTitle("NukeX Path Configuration");
+    setFixedSize(500, 280);
+
     // Establecer color de fondo #161616
     setStyleSheet("QWidget { background-color: #161616; color: #ffffff; }");
 }
@@ -30,9 +28,9 @@ void ConfigWindow::setupUI()
 {
     // Layout principal
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(15);
+    mainLayout->setSpacing(20);
     mainLayout->setContentsMargins(30, 30, 30, 30);
-    
+
     // Título
     titleLabel = new QLabel("NukeX", this);
     QFont titleFont = titleLabel->font();
@@ -40,36 +38,8 @@ void ConfigWindow::setupUI()
     titleFont.setBold(true);
     titleLabel->setFont(titleFont);
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("QLabel { color: #ffffff; margin-bottom: 5px; }");
-    
-    // Texto descriptivo
-    descriptionLabel = new QLabel("Use this app to open .nk files in your preferred NukeX version", this);
-    QFont descFont = descriptionLabel->font();
-    descFont.setPointSize(10);
-    descriptionLabel->setFont(descFont);
-    descriptionLabel->setAlignment(Qt::AlignCenter);
-    descriptionLabel->setStyleSheet("QLabel { color: #cccccc; margin-bottom: 10px; }");
-    
-    // Botón Apply
-    applyButton = new QPushButton("APPLY", this);
-    applyButton->setFixedSize(120, 35);
-    applyButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #0078d4;"
-        "    border: none;"
-        "    border-radius: 6px;"
-        "    color: #ffffff;"
-        "    font-weight: bold;"
-        "    font-size: 12px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #106ebe;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: #005a9e;"
-        "}"
-    );
-    
+    titleLabel->setStyleSheet("QLabel { color: #ffffff; margin-bottom: 10px; }");
+
     // Campo de texto para la ruta
     nukePathEdit = new QLineEdit(this);
     nukePathEdit->setPlaceholderText("Selecciona la ruta de NukeX.exe o Nuke.exe");
@@ -84,13 +54,12 @@ void ConfigWindow::setupUI()
         "}"
         "QLineEdit:focus {"
         "    border: 1px solid #0078d4;"
-        "}"
-    );
-    
+        "}");
+
     // Layout horizontal para el campo de texto y botón Browse
     QHBoxLayout *pathLayout = new QHBoxLayout();
     pathLayout->addWidget(nukePathEdit);
-    
+
     // Botón Browse
     browseButton = new QPushButton("BROWSE", this);
     browseButton->setFixedSize(80, 32);
@@ -108,17 +77,49 @@ void ConfigWindow::setupUI()
         "}"
         "QPushButton:pressed {"
         "    background-color: #303030;"
-        "}"
-    );
-    
+        "}");
+
     pathLayout->addWidget(browseButton);
+
+    // Texto descriptivo y botón Apply
+    QHBoxLayout *applyLayout = new QHBoxLayout();
     
+    descriptionLabel = new QLabel("Use this app to open .nk files in your preferred NukeX version", this);
+    descriptionLabel->setStyleSheet(
+        "QLabel {"
+        "    color: #cccccc;"
+        "    font-size: 11px;"
+        "    padding: 5px;"
+        "}");
+    descriptionLabel->setWordWrap(true);
+    
+    applyButton = new QPushButton("APPLY", this);
+    applyButton->setFixedSize(80, 32);
+    applyButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #404040;"
+        "    border: 1px solid #505050;"
+        "    border-radius: 4px;"
+        "    color: #ffffff;"
+        "    font-weight: bold;"
+        "    font-size: 10px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #505050;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #303030;"
+        "}");
+    
+    applyLayout->addWidget(descriptionLabel);
+    applyLayout->addWidget(applyButton);
+
     // Botón Save
     saveButton = new QPushButton("SAVE", this);
     saveButton->setFixedSize(100, 35);
     saveButton->setStyleSheet(
         "QPushButton {"
-        "    background-color: #28a745;"
+        "    background-color: #0078d4;"
         "    border: none;"
         "    border-radius: 6px;"
         "    color: #ffffff;"
@@ -126,28 +127,18 @@ void ConfigWindow::setupUI()
         "    font-size: 12px;"
         "}"
         "QPushButton:hover {"
-        "    background-color: #218838;"
+        "    background-color: #106ebe;"
         "}"
         "QPushButton:pressed {"
-        "    background-color: #1e7e34;"
-        "}"
-    );
-    
-    // Layout horizontal para los botones Apply y Save
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(applyButton);
-    buttonLayout->addSpacing(20);
-    buttonLayout->addWidget(saveButton);
-    buttonLayout->addStretch();
-    
+        "    background-color: #005a9e;"
+        "}");
+
     // Agregar widgets al layout principal
     mainLayout->addWidget(titleLabel);
-    mainLayout->addWidget(descriptionLabel);
-    mainLayout->addLayout(buttonLayout);
-    mainLayout->addSpacing(10);
     mainLayout->addLayout(pathLayout);
-    
+    mainLayout->addLayout(applyLayout);
+    mainLayout->addWidget(saveButton, 0, Qt::AlignCenter);
+
     // Conectar señales
     connect(browseButton, &QPushButton::clicked, this, &ConfigWindow::browseNukePath);
     connect(saveButton, &QPushButton::clicked, this, &ConfigWindow::saveConfiguration);
@@ -157,7 +148,8 @@ void ConfigWindow::setupUI()
 void ConfigWindow::loadCurrentPath()
 {
     QString currentPath = getNukePathFromFile();
-    if (!currentPath.isEmpty()) {
+    if (!currentPath.isEmpty())
+    {
         nukePathEdit->setText(currentPath);
     }
 }
@@ -167,16 +159,17 @@ QString ConfigWindow::getNukePathFromFile()
     QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(configDir); // Crear directorio si no existe
     QString filepath = QDir(configDir).filePath("nukeXpath.txt");
-    
+
     QFile file(filepath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
         return QString();
     }
-    
+
     QTextStream in(&file);
     QString nukePath = in.readLine().trimmed();
     file.close();
-    
+
     return nukePath;
 }
 
@@ -184,15 +177,15 @@ void ConfigWindow::browseNukePath()
 {
     QString currentPath = nukePathEdit->text();
     QString startDir = currentPath.isEmpty() ? "C:/Program Files/" : QDir(currentPath).absolutePath();
-    
+
     QString selectedPath = QFileDialog::getOpenFileName(
         this,
         "Seleccionar NukeX.exe o Nuke.exe",
         startDir,
-        "Executable Files (*.exe);;All Files (*)"
-    );
-    
-    if (!selectedPath.isEmpty()) {
+        "Executable Files (*.exe);;All Files (*)");
+
+    if (!selectedPath.isEmpty())
+    {
         nukePathEdit->setText(selectedPath);
     }
 }
@@ -200,28 +193,31 @@ void ConfigWindow::browseNukePath()
 void ConfigWindow::saveConfiguration()
 {
     QString nukePath = nukePathEdit->text().trimmed();
-    
-    if (nukePath.isEmpty()) {
+
+    if (nukePath.isEmpty())
+    {
         QMessageBox::warning(this, "Error", "Por favor, selecciona una ruta válida para NukeX.");
         return;
     }
-    
+
     // Verificar que el archivo existe
-    if (!QFile::exists(nukePath)) {
+    if (!QFile::exists(nukePath))
+    {
         QMessageBox::warning(this, "Error", "El archivo seleccionado no existe.");
         return;
     }
-    
+
     // Verificar que es un ejecutable de Nuke
     QString fileName = QFileInfo(nukePath).fileName().toLower();
-    if (!fileName.contains("nuke")) {
+    if (!fileName.contains("nuke"))
+    {
         QMessageBox::warning(this, "Advertencia", "El archivo seleccionado no parece ser un ejecutable de Nuke.");
     }
-    
+
     saveNukePath(nukePath);
-    
+
     QMessageBox::information(this, "Configuración Guardada", "La ruta de NukeX se ha guardado correctamente.");
-    
+
     // Cerrar la aplicación
     QApplication::quit();
 }
@@ -231,9 +227,10 @@ void ConfigWindow::saveNukePath(const QString &path)
     QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(configDir); // Crear directorio si no existe
     QString filepath = QDir(configDir).filePath("nukeXpath.txt");
-    
+
     QFile file(filepath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
         QTextStream out(&file);
         out << path;
         file.close();
@@ -242,353 +239,301 @@ void ConfigWindow::saveNukePath(const QString &path)
 
 void ConfigWindow::applyFileAssociation()
 {
-    QString currentExePath = getCurrentExecutablePath();
+    Logger::logInfo("=== INICIANDO ASOCIACIÓN DE ARCHIVOS .NK ===");
     
-    if (currentExePath.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No se pudo obtener la ruta del ejecutable actual.");
+    QString nukePath = nukePathEdit->text().trimmed();
+    Logger::logInfo(QString("Ruta de NukeX: %1").arg(nukePath));
+    
+    if (nukePath.isEmpty()) {
+        Logger::logError("Error: Ruta de NukeX vacía");
+        QMessageBox::warning(this, "Error", "Por favor, selecciona una ruta válida para NukeX primero.");
         return;
     }
     
-    // Confirmar con el usuario
-    int reply = QMessageBox::question(this, "Asociar Archivos .nk", 
-        QString("¿Deseas asociar todos los archivos .nk para que se abran con:\n%1?\n\n"
-                "Esto limpiará asociaciones previas y modificará el registro de Windows.").arg(currentExePath),
+    if (!QFile::exists(nukePath)) {
+        Logger::logError(QString("Error: El archivo no existe: %1").arg(nukePath));
+        QMessageBox::warning(this, "Error", "El archivo seleccionado no existe.");
+        return;
+    }
+    
+    Logger::logInfo("Mostrando diálogo de confirmación al usuario");
+    // Mostrar mensaje de confirmación
+    QMessageBox::StandardButton reply = QMessageBox::question(this, 
+        "Confirmar Asociación", 
+        "¿Deseas asociar los archivos .nk con esta aplicación?\n\n"
+        "Esto modificará el registro de Windows para que los archivos .nk se abran con NukeX.",
         QMessageBox::Yes | QMessageBox::No);
-    
-    if (reply == QMessageBox::Yes) {
-        // Primero limpiar asociaciones existentes
-        cleanupFileAssociations();
-        // Luego asociar archivos
-        associateNkFiles();
-    }
-}
-
-QString ConfigWindow::getCurrentExecutablePath()
-{
-    return QCoreApplication::applicationFilePath();
-}
-
-void ConfigWindow::associateNkFiles()
-{
-    Logger::log("=== INICIANDO PROCESO DE ASOCIACIÓN COMO EN EL .BAT ===");
-    
-    QString exePath = getCurrentExecutablePath();
-    QString progId = "LGA.NukeScript.1";
-    QString extension = ".nk";
-    
-    // PASO 1: Limpiar COMPLETAMENTE el registro (como en el .bat)
-    Logger::log("PASO 1: Limpiando registro COMPLETAMENTE...");
-    cleanupFileAssociations();
-    
-    // PASO 2: Registrar SOLO el ProgID (como en el .bat)
-    Logger::log("PASO 2: Registrando ProgID limpio...");
-    if (!registerOfficialProgId(progId, exePath)) {
-        Logger::log("❌ ERROR: Falló el registro del ProgID");
-        QMessageBox::warning(this, "Error", "No se pudo registrar el ProgID correctamente.");
+        
+    if (reply != QMessageBox::Yes) {
+        Logger::logInfo("Usuario canceló la asociación");
         return;
     }
     
-    // PASO 3: Usar SetUserFTA (como en el .bat)
-    Logger::log("PASO 3: Usando SetUserFTA...");
-    if (!executeSetUserFTA(extension, progId)) {
-        Logger::log("❌ ERROR: SetUserFTA falló");
-        return;
-    }
-    
-    // PASO 4: SOLO verificar (SIN escribir nada más)
-    Logger::log("PASO 4: Verificando resultado...");
-    verifyFinalResult(extension, progId);
-    
-    Logger::log("=== PROCESO COMPLETADO ===");
-}
-
-bool ConfigWindow::registerOfficialProgId(const QString &progId, const QString &exePath)
-{
-#ifdef Q_OS_WIN
-    Logger::log(QString("=== REGISTRANDO PROGID EXACTAMENTE COMO EN EL .BAT ==="));
-    Logger::log(QString("ProgID: %1").arg(progId));
-    Logger::log(QString("Ejecutable: %1").arg(exePath));
-    
-    // Verificar que el ejecutable existe
-    if (!QFile::exists(exePath)) {
-        Logger::logError(QString("❌ ERROR: El ejecutable no existe: %1").arg(exePath));
-        return false;
-    }
+    Logger::logInfo("Usuario confirmó la asociación - iniciando proceso");
     
     try {
-        // SOLO registrar el ProgID principal (como en el .bat)
-        QString progIdKey = QString("HKEY_CURRENT_USER\\Software\\Classes\\%1").arg(progId);
-        QSettings progIdSettings(progIdKey, QSettings::NativeFormat);
+        // Primero guardar la configuración
+        Logger::logInfo("Guardando configuración de NukeX");
+        saveNukePath(nukePath);
         
-        // Descripción del ProgID
-        progIdSettings.setValue("Default", "Nuke Script File");
-        Logger::log("✓ Descripción registrada");
+        // Ejecutar los comandos de registro
+        Logger::logInfo("Ejecutando comandos de registro");
+        executeRegistryCommands();
         
-        // Comando de apertura (EXACTAMENTE como en el .bat)
-        QString command = QString("\"%1\" \"%%1\"").arg(exePath);
-        progIdSettings.setValue("shell/open/command/Default", command);
-        Logger::log(QString("✓ Comando registrado: %1").arg(command));
-        
-        // Icono (opcional, como en el .bat)
-        QString iconPath = QDir(QCoreApplication::applicationDirPath()).filePath("app_icon.ico");
-        if (QFile::exists(iconPath)) {
-            QString iconValue = QString("\"%1\",0").arg(QDir::toNativeSeparators(iconPath));
-            progIdSettings.setValue("DefaultIcon/Default", iconValue);
-            Logger::log(QString("✓ Icono registrado: %1").arg(iconValue));
-        } else {
-            Logger::log("⚠ Icono no encontrado, continuando sin icono");
-        }
-        
-        // Sincronizar
-        progIdSettings.sync();
-        Logger::log("✓ ProgID sincronizado");
-        
-        // Verificar que se guardó
-        QString savedCommand = progIdSettings.value("shell/open/command/Default").toString();
-        if (savedCommand.isEmpty()) {
-            Logger::logError("❌ ERROR: El comando no se guardó correctamente");
-            return false;
-        }
-        
-        Logger::log(QString("✅ ProgID registrado exitosamente: %1").arg(savedCommand));
-        return true;
-        
+        Logger::logInfo("Asociación completada exitosamente");
+        QMessageBox::information(this, "Asociación Completada", 
+            "La asociación de archivos .nk se ha configurado correctamente.\n\n"
+            "Ahora puedes hacer doble click en archivos .nk para abrirlos con NukeX.");
+            
     } catch (const std::exception& e) {
-        Logger::logError(QString("❌ EXCEPCIÓN: %1").arg(e.what()));
-        return false;
-    } catch (...) {
-        Logger::logError("❌ ERROR DESCONOCIDO");
-        return false;
+        Logger::logError(QString("Excepción durante asociación: %1").arg(e.what()));
+        QMessageBox::critical(this, "Error", 
+            QString("Error al configurar la asociación de archivos:\n%1").arg(e.what()));
     }
-#else
-    Q_UNUSED(progId)
-    Q_UNUSED(exePath)
-    return false;
-#endif
 }
 
-bool ConfigWindow::executeSetUserFTA(const QString &extension, const QString &progId)
+void ConfigWindow::executeRegistryCommands()
 {
-    Logger::log("=== EJECUTANDO SETUSERFTA EXACTAMENTE COMO EN EL .BAT ===");
+    Logger::logInfo("=== EJECUTANDO COMANDOS DE REGISTRO ===");
+    QStringList errors;
     
-    QString executablePath = QCoreApplication::applicationFilePath();
-    QFileInfo appDir(executablePath);
-    QString setUserFTAPath = appDir.absolutePath() + "/SetUserFTA.exe";
-    
-    // Verificar si SetUserFTA.exe existe
-    if (!QFileInfo::exists(setUserFTAPath)) {
-        Logger::log("❌ ERROR: SetUserFTA.exe no encontrado en: " + setUserFTAPath);
-        Logger::log("📥 Descarga desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/");
-        
-        QMessageBox::warning(this, "❌ SetUserFTA Requerido", 
-            "🚨 IMPORTANTE: SetUserFTA.exe no encontrado\n\n"
-            "Para asociaciones de archivos en Windows 10/11 necesitas:\n"
-            "📥 Descargar SetUserFTA.exe\n"
-            "📁 Colocarlo junto a LGA_OpenInNukeX.exe\n\n"
-            "⚠️ Sin SetUserFTA, Windows detecta las asociaciones como\n"
-            "'hijacking' y las resetea automáticamente.\n\n"
-            "Descarga desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/");
-        return false;
+    // Paso 1: Limpiar registro
+    Logger::logInfo("PASO 1: Limpiando registro...");
+    if (!cleanRegistry()) {
+        errors << "Error al limpiar el registro";
+        Logger::logError("PASO 1 FALLÓ: Error al limpiar el registro");
+    } else {
+        Logger::logInfo("PASO 1 COMPLETADO: Registro limpiado exitosamente");
     }
     
-    // Ejecutar SetUserFTA EXACTAMENTE como en el .bat
+    // Esperar un poco para que Windows procese
+    Logger::logInfo("Esperando 1 segundo para que Windows procese...");
+    QThread::msleep(1000);
+    
+    // Paso 2: Registrar ProgID
+    Logger::logInfo("PASO 2: Registrando ProgID...");
+    if (!registerProgId()) {
+        errors << "Error al registrar ProgID";
+        Logger::logError("PASO 2 FALLÓ: Error al registrar ProgID");
+    } else {
+        Logger::logInfo("PASO 2 COMPLETADO: ProgID registrado exitosamente");
+    }
+    
+    // Paso 3: Configurar asociación
+    Logger::logInfo("PASO 3: Configurando asociación...");
+    if (!setFileAssociation()) {
+        errors << "Error al configurar asociación";
+        Logger::logError("PASO 3 FALLÓ: Error al configurar asociación");
+    } else {
+        Logger::logInfo("PASO 3 COMPLETADO: Asociación configurada exitosamente");
+    }
+    
+    if (!errors.isEmpty()) {
+        Logger::logError(QString("Se encontraron errores: %1").arg(errors.join("; ")));
+        QMessageBox::warning(this, "Advertencias", 
+            "Se encontraron algunos problemas:\n" + errors.join("\n") + 
+            "\n\nLa asociación puede no funcionar completamente.");
+    }
+    
+    // Notificar cambios al explorador
+    Logger::logInfo("PASO 4: Notificando cambios al Explorador...");
+    if (executeCommand("rundll32.exe", QStringList() << "shell32.dll,SHChangeNotify" << "0x08000000,0x0000,0,0")) {
+        Logger::logInfo("PASO 4 COMPLETADO: Explorador notificado exitosamente");
+    } else {
+        Logger::logError("PASO 4 FALLÓ: Error al notificar al Explorador");
+    }
+    
+    Logger::logInfo("=== COMANDOS DE REGISTRO COMPLETADOS ===");
+}
+
+bool ConfigWindow::executeCommand(const QString &program, const QStringList &arguments)
+{
+    QString commandStr = QString("%1 %2").arg(program, arguments.join(" "));
+    Logger::logInfo(QString("=== EJECUTANDO COMANDO ==="));
+    Logger::logInfo(QString("Comando: %1").arg(commandStr));
+    
     QProcess process;
-    QStringList arguments;
-    arguments << extension << progId;
+    process.start(program, arguments);
     
-    Logger::log(QString("🔧 Ejecutando: %1 %2").arg(setUserFTAPath, arguments.join(" ")));
-    
-    process.setProgram(setUserFTAPath);
-    process.setArguments(arguments);
-    process.setWorkingDirectory(appDir.absolutePath());
-    
-    process.start();
-    
-    if (!process.waitForStarted(5000)) {
-        Logger::log("❌ ERROR: No se pudo iniciar SetUserFTA");
-        QMessageBox::warning(this, "Error", "No se pudo ejecutar SetUserFTA.exe");
+    if (!process.waitForStarted(3000)) {
+        Logger::logError(QString("Error al iniciar comando: %1").arg(commandStr));
+        Logger::logError(QString("Error del proceso: %1").arg(process.errorString()));
         return false;
     }
     
-    if (!process.waitForFinished(15000)) {
-        Logger::log("❌ ERROR: SetUserFTA timeout");
+    if (!process.waitForFinished(10000)) {
+        Logger::logError(QString("Timeout esperando comando: %1").arg(commandStr));
         process.kill();
-        QMessageBox::warning(this, "Error", "SetUserFTA tardó demasiado en ejecutarse");
         return false;
     }
     
     int exitCode = process.exitCode();
-    QString output = process.readAllStandardOutput();
-    QString error = process.readAllStandardError();
+    QString stdOut = process.readAllStandardOutput();
+    QString stdErr = process.readAllStandardError();
     
-    Logger::log(QString("SetUserFTA terminó con código: %1").arg(exitCode));
-    if (!output.isEmpty()) {
-        Logger::log("📤 Salida: " + output.trimmed());
+    Logger::logInfo(QString("Código de salida: %1").arg(exitCode));
+    if (!stdOut.isEmpty()) {
+        Logger::logInfo(QString("Salida estándar: %1").arg(stdOut.trimmed()));
     }
-    if (!error.isEmpty()) {
-        Logger::log("❌ Error: " + error.trimmed());
+    if (!stdErr.isEmpty()) {
+        Logger::logInfo(QString("Error estándar: %1").arg(stdErr.trimmed()));
     }
     
-    if (exitCode == 0) {
-        Logger::log("✅ SetUserFTA ejecutado exitosamente");
-        
-        // Notificar al explorador de cambios (como en el .bat)
-#ifdef Q_OS_WIN
-        Sleep(500);
-        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
-#endif
-        Logger::log("✅ Explorador notificado de cambios");
-        
-        QMessageBox::information(this, "Asociación Exitosa", 
-            "✅ Los archivos .nk ahora se abrirán con LGA_OpenInNukeX.\n\n"
-            "🔧 La asociación se estableció usando SetUserFTA (método oficial)\n"
-            "🛡️ Windows no detectará esto como 'hijacking'\n\n"
-            "Si no funciona inmediatamente:\n"
-            "• Reinicia el Explorador de Windows\n"
-            "• Cierra y vuelve a abrir las ventanas del explorador");
-        
-        return true;
-    } else {
-        Logger::log("❌ ERROR: SetUserFTA falló con código: " + QString::number(exitCode));
-        
-        QString errorMsg = "SetUserFTA falló al establecer la asociación.\n\n";
-        errorMsg += QString("Código de error: %1\n").arg(exitCode);
-        
-        if (!error.isEmpty()) {
-            errorMsg += "Error: " + error + "\n";
+    if (exitCode != 0) {
+        // Para comandos reg delete, el código de salida 1 es normal si la clave no existe
+        if (program == "reg" && arguments.contains("delete") && exitCode == 1) {
+            Logger::logInfo("Código 1 en reg delete es normal (clave no existe)");
+            return true; // No es realmente un error
         }
-        
-        errorMsg += "\nPosibles soluciones:\n";
-        errorMsg += "• Ejecuta la aplicación como administrador\n";
-        errorMsg += "• Verifica que SetUserFTA.exe no esté bloqueado por antivirus\n";
-        errorMsg += "• Reinicia Windows y vuelve a intentar";
-        
-        QMessageBox::warning(this, "Error en SetUserFTA", errorMsg);
+        Logger::logError(QString("Comando falló con código: %1").arg(exitCode));
         return false;
     }
+    
+    Logger::logInfo("Comando ejecutado exitosamente");
+    return true;
 }
 
-void ConfigWindow::verifyFinalResult(const QString &extension, const QString &progId)
+bool ConfigWindow::cleanRegistry()
 {
-#ifdef Q_OS_WIN
-    Logger::log("=== VERIFICANDO RESULTADO FINAL (SOLO LECTURA) ===");
+    Logger::logInfo("Iniciando limpieza del registro...");
     
-    // SOLO verificar UserChoice (NO escribir nada)
-    QString userChoiceKey = QString("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\%1\\UserChoice").arg(extension);
-    QSettings userChoiceSettings(userChoiceKey, QSettings::NativeFormat);
-    QString currentProgId = userChoiceSettings.value("ProgId").toString();
-    QString hash = userChoiceSettings.value("Hash").toString();
+    // Lista de claves a eliminar
+    QStringList keysToDelete = {
+        "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.nk\\UserChoice",
+        "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.nk",
+        "HKEY_CURRENT_USER\\Software\\Classes\\.nk",
+        "HKEY_CURRENT_USER\\Software\\Classes\\NukeScript",
+        "HKEY_CURRENT_USER\\Software\\Classes\\nuke_auto_file",
+        "HKEY_CURRENT_USER\\Software\\Classes\\Foundry.Nuke.Script",
+        "HKEY_CURRENT_USER\\Software\\Classes\\LGA.NukeScript",
+        "HKEY_CURRENT_USER\\Software\\Classes\\LGA.NukeScript.1",
+        "HKEY_CURRENT_USER\\Software\\Classes\\Applications\\LGA_OpenInNukeX.exe",
+        "HKEY_CURRENT_USER\\Software\\Classes\\Applications\\Nuke15.0.exe"
+    };
     
-    Logger::log(QString("🔍 UserChoice ProgId: %1").arg(currentProgId.isEmpty() ? "VACÍO" : currentProgId));
-    Logger::log(QString("🔍 UserChoice Hash: %1").arg(hash.isEmpty() ? "VACÍO" : hash));
+    Logger::logInfo(QString("Ejecutando %1 comandos de limpieza...").arg(keysToDelete.size()));
     
-    if (currentProgId == progId && !hash.isEmpty()) {
-        Logger::log("✅ UserChoice configurado correctamente por SetUserFTA");
-    } else if (currentProgId.isEmpty()) {
-        Logger::log("❌ UserChoice VACÍO - SetUserFTA no funcionó");
-    } else {
-        Logger::log(QString("⚠ UserChoice diferente: esperado %1, encontrado %2").arg(progId, currentProgId));
+    bool allSuccess = true;
+    int successCount = 0;
+    
+    for (const QString& key : keysToDelete) {
+        QStringList args;
+        args << "delete" << key << "/f";
+        
+        if (executeCommand("reg", args)) {
+            successCount++;
+        } else {
+            allSuccess = false;
+        }
     }
     
-    // SOLO verificar que el ProgID existe (NO escribir nada)
-    QString progIdKey = QString("HKEY_CURRENT_USER\\Software\\Classes\\%1").arg(progId);
-    QSettings progIdSettings(progIdKey, QSettings::NativeFormat);
-    QString description = progIdSettings.value("Default").toString();
-    QString command = progIdSettings.value("shell/open/command/Default").toString();
-    
-    Logger::log(QString("🔍 ProgID Descripción: %1").arg(description.isEmpty() ? "VACÍA" : description));
-    Logger::log(QString("🔍 ProgID Comando: %1").arg(command.isEmpty() ? "VACÍO" : command));
-    
-    if (!command.isEmpty()) {
-        Logger::log("✅ ProgID registrado correctamente");
-    } else {
-        Logger::log("❌ ProgID VACÍO o mal registrado");
-    }
-    
-    // Resumen final
-    Logger::log("=== RESUMEN FINAL ===");
-    if (currentProgId == progId && !hash.isEmpty() && !command.isEmpty()) {
-        Logger::log("✅ ASOCIACIÓN EXITOSA - Todo configurado correctamente");
-    } else {
-        Logger::log("❌ ASOCIACIÓN PROBLEMÁTICA - Revisar logs arriba");
-    }
-    
-    Logger::log("=== FIN VERIFICACIÓN ===");
-    
-#else
-    Q_UNUSED(extension)
-    Q_UNUSED(progId)
-#endif
+    Logger::logInfo(QString("Limpieza completada: %1/%2 comandos exitosos").arg(successCount).arg(keysToDelete.size()));
+    return allSuccess;
 }
 
-void ConfigWindow::cleanupFileAssociations()
+bool ConfigWindow::registerProgId()
 {
-#ifdef Q_OS_WIN
-    Logger::log("=== LIMPIEZA TOTAL DEL REGISTRO (COMO EN EL .BAT) ===");
+    Logger::logInfo("Iniciando registro de ProgID...");
     
-    QString extension = ".nk";
+    QString progId = "LGA.NukeScript.1";
+    QString exePath = QCoreApplication::applicationFilePath();
+    QString iconPath = QDir(QCoreApplication::applicationDirPath()).filePath("app_icon.ico");
     
-    try {
-        // 1. Limpiar UserChoice (lo más importante, como en el .bat)
-        Logger::log("Limpiando UserChoice...");
-        QString userChoiceKey = QString("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\%1\\UserChoice").arg(extension);
-        QSettings userChoiceSettings(userChoiceKey, QSettings::NativeFormat);
-        userChoiceSettings.clear();
-        userChoiceSettings.sync();
-        
-        // También limpiar toda la clave FileExts/.nk
-        QString fileExtsKey = QString("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\%1").arg(extension);
-        QSettings fileExtsSettings(fileExtsKey, QSettings::NativeFormat);
-        fileExtsSettings.clear();
-        fileExtsSettings.sync();
-        Logger::log("✓ UserChoice y FileExts limpiados");
-        
-        // 2. Limpiar TODAS las asociaciones directas (como en el .bat)
-        Logger::log("Limpiando asociaciones directas...");
-        QString classesKey = QString("HKEY_CURRENT_USER\\Software\\Classes\\%1").arg(extension);
-        QSettings classesSettings(classesKey, QSettings::NativeFormat);
-        classesSettings.clear();
-        classesSettings.sync();
-        Logger::log("✓ Classes/.nk limpiado");
-        
-        // 3. Limpiar TODOS los ProgIDs posibles (como en el .bat)
-        Logger::log("Limpiando ProgIDs antiguos...");
-        QStringList oldProgIds = {"NukeScript", "nuke_auto_file", "Foundry.Nuke.Script", "LGA.NukeScript", "LGA.NukeScript.1"};
-        for (const QString &oldProgId : oldProgIds) {
-            QString oldProgIdKey = QString("HKEY_CURRENT_USER\\Software\\Classes\\%1").arg(oldProgId);
-            QSettings oldProgIdSettings(oldProgIdKey, QSettings::NativeFormat);
-            oldProgIdSettings.clear();
-            oldProgIdSettings.sync();
+    Logger::logInfo(QString("ProgID: %1").arg(progId));
+    Logger::logInfo(QString("Ejecutable: %1").arg(exePath));
+    Logger::logInfo(QString("Icono: %1").arg(iconPath));
+    
+    QString escapedExePath = exePath;
+    escapedExePath.replace("/", "\\");
+    
+    bool allSuccess = true;
+    int successCount = 0;
+    int totalCommands = 0;
+    
+    // 1. Registrar ProgID principal
+    {
+        QStringList args;
+        args << "add" << QString("HKEY_CURRENT_USER\\Software\\Classes\\%1").arg(progId) 
+             << "/ve" << "/t" << "REG_SZ" << "/d" << "Nuke Script File" << "/f";
+        totalCommands++;
+        if (executeCommand("reg", args)) {
+            successCount++;
+        } else {
+            allSuccess = false;
         }
-        Logger::log("✓ ProgIDs antiguos limpiados");
-        
-        // 4. Limpiar Applications (como en el .bat)
-        Logger::log("Limpiando Applications...");
-        QStringList appKeys = {"LGA_OpenInNukeX.exe", "Nuke15.0.exe"};
-        for (const QString &appKey : appKeys) {
-            QString applicationKey = QString("HKEY_CURRENT_USER\\Software\\Classes\\Applications\\%1").arg(appKey);
-            QSettings applicationSettings(applicationKey, QSettings::NativeFormat);
-            applicationSettings.clear();
-            applicationSettings.sync();
-        }
-        Logger::log("✓ Applications limpiadas");
-        
-        // 5. Notificar cambios (como en el .bat)
-        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
-        Logger::log("✓ Sistema notificado de limpieza");
-        
-        // 6. Esperar que Windows procese (como en el .bat)
-        Logger::log("Esperando que Windows procese la limpieza...");
-        Sleep(2000);  // 2 segundos como en el .bat
-        
-        Logger::log("✓ Limpieza total completada");
-        
-    } catch (const std::exception& e) {
-        Logger::logError(QString("❌ ERROR durante limpieza: %1").arg(e.what()));
-    } catch (...) {
-        Logger::logError("❌ ERROR DESCONOCIDO durante limpieza");
     }
-#endif
+    
+    // 2. Registrar comando de apertura
+    {
+        QStringList args;
+        args << "add" << QString("HKEY_CURRENT_USER\\Software\\Classes\\%1\\shell\\open\\command").arg(progId)
+             << "/ve" << "/t" << "REG_SZ" << "/d" << QString("\"%1\" \"%2\"").arg(escapedExePath, "%1") << "/f";
+        totalCommands++;
+        if (executeCommand("reg", args)) {
+            successCount++;
+        } else {
+            allSuccess = false;
+        }
+    }
+    
+    // 3. Registrar icono si existe
+    if (QFile::exists(iconPath)) {
+        Logger::logInfo("Icono encontrado, registrándolo...");
+        QString escapedIconPath = iconPath;
+        escapedIconPath.replace("/", "\\");
+        
+        QStringList args;
+        args << "add" << QString("HKEY_CURRENT_USER\\Software\\Classes\\%1\\DefaultIcon").arg(progId)
+             << "/ve" << "/t" << "REG_SZ" << "/d" << QString("\"%1\",0").arg(escapedIconPath) << "/f";
+        totalCommands++;
+        if (executeCommand("reg", args)) {
+            successCount++;
+        } else {
+            allSuccess = false;
+        }
+    } else {
+        Logger::logInfo("Icono no encontrado, omitiendo registro de icono");
+    }
+    
+    Logger::logInfo(QString("Registro de ProgID completado: %1/%2 comandos exitosos").arg(successCount).arg(totalCommands));
+    return allSuccess;
 }
 
- 
+bool ConfigWindow::setFileAssociation()
+{
+    Logger::logInfo("Iniciando configuración de asociación de archivos...");
+    
+    QString progId = "LGA.NukeScript.1";
+    QString setUserFtaPath = QDir(QCoreApplication::applicationDirPath()).filePath("SetUserFTA.exe");
+    
+    Logger::logInfo(QString("Buscando SetUserFTA en: %1").arg(setUserFtaPath));
+    
+    if (QFile::exists(setUserFtaPath)) {
+        Logger::logInfo("SetUserFTA encontrado, usándolo para la asociación");
+        bool result = executeCommand(setUserFtaPath, QStringList() << ".nk" << progId);
+        Logger::logInfo(QString("SetUserFTA resultado: %1").arg(result ? "exitoso" : "falló"));
+        return result;
+    } else {
+        Logger::logInfo("SetUserFTA no encontrado, usando asociación directa en registro");
+        
+        // CAMBIO CRÍTICO: Usar PowerShell en lugar de cmd para mejor compatibilidad
+        QString powershellCommand = QString(
+            "New-Item -Path 'HKCU:\\Software\\Classes\\.nk' -Force | Out-Null; "
+            "Set-ItemProperty -Path 'HKCU:\\Software\\Classes\\.nk' -Name '(Default)' -Value '%1'"
+        ).arg(progId);
+        
+        Logger::logInfo("Usando PowerShell para configurar asociación");
+        bool result = executeCommand("powershell.exe", QStringList() << "-Command" << powershellCommand);
+        
+        if (!result) {
+            Logger::logInfo("PowerShell falló, intentando con reg directo como fallback");
+            QStringList args;
+            args << "add" << "HKEY_CURRENT_USER\\Software\\Classes\\.nk" 
+                 << "/ve" << "/t" << "REG_SZ" << "/d" << progId << "/f";
+            result = executeCommand("reg", args);
+        }
+        
+        Logger::logInfo(QString("Asociación directa resultado: %1").arg(result ? "exitoso" : "falló"));
+        return result;
+    }
+}
