@@ -3,6 +3,11 @@ echo ===============================================
 echo    LGA_OpenInNukeX - Script de Deploy v0.14
 echo ===============================================
 
+REM Cerrar cualquier instancia de la aplicación que pueda estar ejecutándose
+echo Cerrando instancias previas de LGA_OpenInNukeX...
+taskkill /f /im LGA_OpenInNukeX.exe 2>nul
+echo ✓ Instancias cerradas
+
 REM Configurar el entorno de Qt
 set QT_DIR=C:\Qt\6.8.2\mingw_64
 set MINGW_DIR=C:\Qt\Tools\mingw1310_64

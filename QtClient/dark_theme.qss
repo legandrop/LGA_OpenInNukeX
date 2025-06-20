@@ -199,20 +199,6 @@ QComboBox#assigneeFilter[filtered="true"]::down-arrow {
 }
 
 /* ------------------------------ Estilos para Settings ------------------------------ */
-/* Estilo para los títulos de cada campo de entrada de texto que están sobre las líneas de los bordes */
-QLabel#fieldLabel {
-    background-color: #1d1d1d; /* bg_items */
-    padding: 0 2px;
-    color: #B2B2B2; /* txt_principal */
-    font-weight: normal;
-    font-size: 9pt;
-    border: none;
-    margin-bottom: 20px;
-    position: relative;
-    width: auto !important;
-    min-width: 0;
-}
-
 /* Estilo para los títulos de cada sección de settings (File Association, Preferred Nuke Version) */
 QLabel#sectionTitle {
     color: #E0E0E0;
@@ -230,6 +216,16 @@ QGroupBox {
     margin-top: 1ex;
     padding-top: 10px;
     padding-bottom: 10px;
+}
+
+/* Fondo transparente para el contenedor principal de versiones */
+QWidget#versionsMainContainer {
+    background-color: transparent;
+}
+
+/* Fondo transparente para el widget que contiene los botones de versión */
+QWidget#versionsButtonsContainer {
+    background-color: transparent;
 }
 
 /* Estilo para el texto del checkbox de settings ✅ */
@@ -414,6 +410,28 @@ QLabel#tooltipLabel {
     padding: 0px;
     margin: 0;
     width: auto;
+}
+
+/* ------------------------------ Estilos para botones de versiones de Nuke ------------------------------ */
+/* Botón de versión de Nuke - Selector ultra específico */
+QWidget#versionsButtonsContainer QPushButton[class="version"] {
+    background-color: #3F3F3F !important; 
+    color: #B2B2B2 !important; /* txt_principal */
+    border-radius: 16px !important;
+    padding: 8px 16px !important;
+    font-family: "Inter", Arial, Helvetica !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0px !important;
+    min-width: 80px !important;
+}
+
+QWidget#versionsButtonsContainer QPushButton[class="version"]:hover {
+    background-color: #5D5D5D !important; 
+}
+
+QWidget#versionsButtonsContainer QPushButton[class="version"]:pressed {
+    background-color: #6D6D6D !important; 
 }
 
 

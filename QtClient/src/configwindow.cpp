@@ -13,19 +13,44 @@
 #include <QTimer>
 #include <QSizePolicy>
 #include "logger.h"
+#include "qflowlayout.h"
 
 ConfigWindow::ConfigWindow(QWidget *parent)
     : QWidget(parent)
+    , nukeScanner(nullptr)
+    , versionsContainer(nullptr)
+    , scanningLabel(nullptr)
+    , foundVersionsLabel(nullptr)
+    , versionsButtonsWidget(nullptr)
+    , versionsLayout(nullptr)
 {
+    Logger::logInfo("=== CONSTRUCTOR ConfigWindow INICIADO ===");
+    
+    Logger::logInfo("Llamando a setupUI()...");
     setupUI();
+    Logger::logInfo("✓ setupUI() completado");
+    
+    Logger::logInfo("Llamando a loadCurrentPath()...");
     loadCurrentPath();
+    Logger::logInfo("✓ loadCurrentPath() completado");
 
     // Configurar ventana
-    setWindowTitle("LGA OpenInNukeX Config");
+    Logger::logInfo("Configurando ventana...");
+    setWindowTitle("OpenInNukeX Config");
     setFixedSize(900, 600);
+    Logger::logInfo("✓ Ventana configurada");
 
     // Cargar estilo QSS
+    Logger::logInfo("Cargando estilo QSS...");
     loadStyleSheet();
+    Logger::logInfo("✓ Estilo QSS cargado");
+    
+    // Inicializar y comenzar el escaneo de versiones
+    Logger::logInfo("Iniciando proceso de escáner...");
+    initializeScanner();
+    Logger::logInfo("✓ initializeScanner() llamado");
+    
+    Logger::logInfo("=== CONSTRUCTOR ConfigWindow COMPLETADO ===");
 }
 
 void ConfigWindow::setupUI()
@@ -109,7 +134,7 @@ void ConfigWindow::setupUI()
     
     applyButton = new QPushButton("APPLY", this);
     applyButton->setFixedHeight(40);
-    applyButton->setProperty("class", "secondary");
+    applyButton->setProperty("class", "action");
     
     applyLayout->addStretch();
     applyLayout->addWidget(applyButton);
@@ -134,6 +159,54 @@ void ConfigWindow::setupUI()
     nukeVersionLayout->addWidget(nukeVersionTitle);
     nukeVersionLayout->addSpacing(10);
 
+    // ===== SECCIÓN DE VERSIONES ENCONTRADAS (ARRIBA) =====
+    Logger::logInfo("=== CREANDO SECCIÓN DE VERSIONES ENCONTRADAS ===");
+    
+    // Crear contenedor para las versiones encontradas
+    versionsContainer = new QWidget(nukeVersionGroup);
+    versionsContainer->setObjectName("versionsMainContainer");
+    // NO aplicar setStyleSheet aquí porque sobrescribe los estilos de los botones hijos
+    Logger::logInfo("✓ versionsContainer creado");
+    
+    versionsLayout = new QVBoxLayout(versionsContainer);
+    versionsLayout->setContentsMargins(0, 0, 0, 0);
+    versionsLayout->setSpacing(10);
+    Logger::logInfo("✓ versionsLayout creado y configurado");
+    
+    // Etiqueta descriptiva
+    foundVersionsLabel = new QLabel("Choose one of the found versions or browse your own:", versionsContainer);
+    foundVersionsLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 14px; }");
+    foundVersionsLabel->setWordWrap(true);
+    versionsLayout->addWidget(foundVersionsLabel);
+    Logger::logInfo("✓ foundVersionsLabel creado y agregado");
+    
+    // Etiqueta de scanning (inicialmente visible)
+    scanningLabel = new QLabel("🔍 Scanning for installed Nuke versions...", versionsContainer);
+    scanningLabel->setStyleSheet("QLabel { color: #4A9EFF; font-size: 14px; font-style: italic; }");
+    versionsLayout->addWidget(scanningLabel);
+    Logger::logInfo("✓ scanningLabel creado y agregado");
+    
+    // Widget contenedor para los botones de versiones (inicialmente oculto)
+    versionsButtonsWidget = new QWidget(versionsContainer);
+    versionsButtonsWidget->setObjectName("versionsButtonsContainer");
+    versionsButtonsWidget->setVisible(false);
+    // NO establecer fondo transparente para que los botones mantengan sus estilos
+    Logger::logInfo("✓ versionsButtonsWidget creado y ocultado");
+    
+    // Layout de flujo para organizar los botones en filas
+    QFlowLayout *flowLayout = new QFlowLayout(versionsButtonsWidget, 0, 10, 10);
+    Logger::logInfo("✓ QFlowLayout creado para versionsButtonsWidget");
+    
+    versionsLayout->addWidget(versionsButtonsWidget);
+    Logger::logInfo("✓ versionsButtonsWidget agregado a versionsLayout");
+    
+    // Agregar el contenedor de versiones al grupo
+    nukeVersionLayout->addWidget(versionsContainer);
+    nukeVersionLayout->addSpacing(15);
+    Logger::logInfo("✓ versionsContainer agregado a nukeVersionLayout");
+    
+    Logger::logInfo("=== SECCIÓN DE VERSIONES COMPLETADA ===");
+
     // Crear layout horizontal para el campo de path y el botón browse
     QHBoxLayout *nukePathLayout = new QHBoxLayout();
     nukePathLayout->setContentsMargins(0, 0, 0, 0);
@@ -156,40 +229,14 @@ void ConfigWindow::setupUI()
     nukeVersionLayout->addLayout(nukePathLayout);
     nukeVersionLayout->addSpacing(10);
     
-    // Crear etiqueta y posicionarla absolutamente ENCIMA del campo
-    QLabel *nukePathLabel = new QLabel("NukeX Path", contentWidget);
-    nukePathLabel->setObjectName("fieldLabel");
-    nukePathLabel->adjustSize();
-    
-    // Posicionar la etiqueta después de que el layout se haya establecido
-    QTimer::singleShot(0, [=]() {
-        // Mapear las coordenadas del nukeVersionGroup al contentWidget
-        QPoint groupPos = nukeVersionGroup->mapTo(contentWidget, QPoint(0, 0));
-        
-        // Posicionar etiqueta sobre el campo con ajuste en Y
-        nukePathLabel->move(groupPos.x() + nukePathEdit->x() + 50, 
-                           groupPos.y() + nukePathEdit->y() + 88);
 
-        // Forzar que esté por encima de todo
-        nukePathLabel->raise();
-        
-        // Asegurar que el label esté en el tope de la pila de widgets
-        nukePathLabel->setParent(contentWidget);
-        
-        // Volver a mostrar y ajustar después del cambio de padre
-        nukePathLabel->show();
-        nukePathLabel->adjustSize();
-    });
     
-    // Agregar el grupo de Nuke Version al layout central
-    centralLayout->addWidget(nukeVersionGroup);
-
-    // Boton de SAVE
+    // Boton de SAVE (DENTRO del grupo Nuke Version)
     QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->setContentsMargins(0, 10, 0, 0);
+    buttonLayout->setContentsMargins(0, 15, 0, 0);
     buttonLayout->setSpacing(10);
 
-    saveButton = new QPushButton("SAVE", contentWidget);
+    saveButton = new QPushButton("SAVE", nukeVersionGroup);
     saveButton->setFixedHeight(40);
     saveButton->setMinimumWidth(100);
     saveButton->setProperty("class", "action");
@@ -197,7 +244,10 @@ void ConfigWindow::setupUI()
     buttonLayout->addStretch();
     buttonLayout->addWidget(saveButton);
 
-    centralLayout->addLayout(buttonLayout);
+    nukeVersionLayout->addLayout(buttonLayout);
+    
+    // Agregar el grupo de Nuke Version al layout central
+    centralLayout->addWidget(nukeVersionGroup);
     
     // Agregar un stretch al final para evitar que los widgets se estiren verticalmente
     centralLayout->addStretch(1);
@@ -620,5 +670,189 @@ void ConfigWindow::loadStyleSheet()
         
         // Fallback: aplicar estilo básico
         setStyleSheet("QWidget { background-color: #161616; color: #B2B2B2; }");
+    }
+}
+
+// ===== FUNCIONES DEL ESCÁNER DE VERSIONES =====
+
+void ConfigWindow::initializeScanner()
+{
+    Logger::logInfo("=== INICIALIZANDO ESCÁNER DE VERSIONES DE NUKE ===");
+    
+    // Verificar que los elementos UI existen
+    if (!scanningLabel) {
+        Logger::logError("ERROR: scanningLabel es nullptr");
+        return;
+    }
+    if (!versionsButtonsWidget) {
+        Logger::logError("ERROR: versionsButtonsWidget es nullptr");
+        return;
+    }
+    if (!foundVersionsLabel) {
+        Logger::logError("ERROR: foundVersionsLabel es nullptr");
+        return;
+    }
+    
+    Logger::logInfo("✓ Elementos UI verificados correctamente");
+    
+    // Crear el escáner
+    nukeScanner = new NukeScanner(this);
+    Logger::logInfo("✓ NukeScanner creado");
+    
+    // Conectar señales
+    connect(nukeScanner, &NukeScanner::scanStarted, this, &ConfigWindow::onScanStarted);
+    connect(nukeScanner, &NukeScanner::scanProgress, this, &ConfigWindow::onScanProgress);
+    connect(nukeScanner, &NukeScanner::versionFound, this, &ConfigWindow::onVersionFound);
+    connect(nukeScanner, &NukeScanner::scanFinished, this, &ConfigWindow::onScanFinished);
+    Logger::logInfo("✓ Señales conectadas");
+    
+    // Iniciar el escaneo
+    Logger::logInfo("Iniciando escaneo...");
+    nukeScanner->startScan();
+}
+
+void ConfigWindow::onScanStarted()
+{
+    Logger::logInfo("=== EVENTO: ESCANEO INICIADO ===");
+    Logger::logInfo("Actualizando UI para mostrar estado de scanning...");
+    
+    if (scanningLabel) {
+        scanningLabel->setText("🔍 Scanning for installed Nuke versions...");
+        scanningLabel->setVisible(true);
+        Logger::logInfo("✓ scanningLabel actualizado y mostrado");
+    } else {
+        Logger::logError("ERROR: scanningLabel es nullptr en onScanStarted");
+    }
+    
+    if (versionsButtonsWidget) {
+        versionsButtonsWidget->setVisible(false);
+        Logger::logInfo("✓ versionsButtonsWidget ocultado");
+    } else {
+        Logger::logError("ERROR: versionsButtonsWidget es nullptr en onScanStarted");
+    }
+}
+
+void ConfigWindow::onScanProgress(const QString &currentPath)
+{
+    if (scanningLabel) {
+        QString shortPath = currentPath;
+        if (shortPath.length() > 50) {
+            shortPath = "..." + shortPath.right(47);
+        }
+        scanningLabel->setText(QString("🔍 Scanning: %1").arg(shortPath));
+    }
+}
+
+void ConfigWindow::onVersionFound(const NukeVersion &version)
+{
+    Logger::logInfo(QString("UI: Nueva versión encontrada - %1").arg(version.displayName));
+    // La creación de botones se hace en onScanFinished para mejor rendimiento
+}
+
+void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
+{
+    Logger::logInfo(QString("=== EVENTO: ESCANEO COMPLETADO - %1 versiones encontradas ===").arg(versions.size()));
+    
+    // Ocultar mensaje de scanning
+    if (scanningLabel) {
+        scanningLabel->setVisible(false);
+        Logger::logInfo("✓ scanningLabel ocultado");
+    } else {
+        Logger::logError("ERROR: scanningLabel es nullptr en onScanFinished");
+    }
+    
+    if (versions.isEmpty()) {
+        Logger::logInfo("No se encontraron versiones - mostrando mensaje de error");
+        // No se encontraron versiones
+        if (scanningLabel) {
+            scanningLabel->setText("❌ No Nuke installations found in common locations");
+            scanningLabel->setStyleSheet("QLabel { color: #FF6B6B; font-size: 14px; font-style: italic; }");
+            scanningLabel->setVisible(true);
+            Logger::logInfo("✓ Mensaje de 'no encontrado' mostrado");
+        }
+        return;
+    }
+    
+    Logger::logInfo("Creando botones para las versiones encontradas...");
+    // Crear botones para las versiones encontradas
+    createVersionButtons(versions);
+    
+    // Mostrar el contenedor de botones
+    if (versionsButtonsWidget) {
+        versionsButtonsWidget->setVisible(true);
+        Logger::logInfo("✓ versionsButtonsWidget mostrado");
+    } else {
+        Logger::logError("ERROR: versionsButtonsWidget es nullptr al intentar mostrar");
+    }
+    
+    // Actualizar mensaje descriptivo
+    if (foundVersionsLabel) {
+        foundVersionsLabel->setText(QString("%1 Nuke versions found:").arg(versions.size()));
+        Logger::logInfo("✓ foundVersionsLabel actualizado");
+    } else {
+        Logger::logError("ERROR: foundVersionsLabel es nullptr al actualizar");
+    }
+}
+
+void ConfigWindow::createVersionButtons(const QList<NukeVersion> &versions)
+{
+    if (!versionsButtonsWidget) {
+        return;
+    }
+    
+    // Obtener el layout de flujo existente
+    QFlowLayout *flowLayout = dynamic_cast<QFlowLayout*>(versionsButtonsWidget->layout());
+    if (!flowLayout) {
+        flowLayout = new QFlowLayout(versionsButtonsWidget, 0, 10, 10);
+    }
+    
+    // Limpiar botones existentes
+    QLayoutItem *item;
+    while ((item = flowLayout->takeAt(0))) {
+        if (item->widget()) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+    
+    // Crear botón para cada versión encontrada
+    for (const NukeVersion &version : versions) {
+        QPushButton *versionButton = new QPushButton(version.displayName, versionsButtonsWidget);
+        versionButton->setFixedHeight(35);
+        versionButton->setMinimumWidth(120);
+        versionButton->setProperty("class", "version");
+        
+        // Guardar la ruta en una propiedad del botón
+        versionButton->setProperty("nukePath", version.path);
+        
+        // Conectar el click
+        connect(versionButton, &QPushButton::clicked, this, &ConfigWindow::onVersionButtonClicked);
+        
+        // Agregar al layout
+        flowLayout->addWidget(versionButton);
+        
+        Logger::logInfo(QString("Botón creado para: %1 -> %2").arg(version.displayName, version.path));
+    }
+}
+
+void ConfigWindow::onVersionButtonClicked()
+{
+    QPushButton *button = qobject_cast<QPushButton*>(sender());
+    if (!button) {
+        return;
+    }
+    
+    QString nukePath = button->property("nukePath").toString();
+    if (nukePath.isEmpty()) {
+        Logger::logError("Error: No se pudo obtener la ruta del botón de versión");
+        return;
+    }
+    
+    Logger::logInfo(QString("Usuario seleccionó versión: %1 -> %2").arg(button->text(), nukePath));
+    
+    // Actualizar el campo de texto con la ruta seleccionada
+    if (nukePathEdit) {
+        nukePathEdit->setText(nukePath);
+        Logger::logInfo("✓ Campo de texto actualizado con la ruta seleccionada");
     }
 }

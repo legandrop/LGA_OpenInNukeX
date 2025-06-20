@@ -19,6 +19,10 @@ add_executable(LGA_OpenInNukeX
     src/configwindow.h
     src/logger.cpp
     src/logger.h
+    src/nukescanner.cpp
+    src/nukescanner.h
+    src/qflowlayout.cpp
+    src/qflowlayout.h
 )
 
 # Enlazar con las librerías de Qt
