@@ -74,7 +74,7 @@ QPushButton:disabled {
 QPushButton.secondary {
     background-color: #3b3b3b;
     color: #B2B2B2; /* txt_principal */
-    border-radius: 13px;
+    border-radius: 4px;
 }
 
 QPushButton.secondary:hover {
@@ -111,7 +111,7 @@ QLineEdit, QTextEdit {
     border: 1px solid #303030; /* border_principal */
     padding: 8px;
     padding-top: 12px;
-    border-radius: 3px;
+    border-radius: 5px;
     font-family: "Inter", Arial, Helvetica;
     font-size: 15px;
     font-weight: 400;
@@ -415,7 +415,7 @@ QLabel#tooltipLabel {
 /* ------------------------------ Estilos para botones de versiones de Nuke ------------------------------ */
 /* Botón de versión de Nuke - Selector ultra específico */
 QWidget#versionsButtonsContainer QPushButton[class="version"] {
-    background-color: #3F3F3F !important; 
+    background-color: #303030 !important; 
     color: #B2B2B2 !important; /* txt_principal */
     border-radius: 16px !important;
     padding: 8px 16px !important;

@@ -121,9 +121,9 @@ void ConfigWindow::setupUI()
     fileAssociationLayout->addSpacing(10);
 
     // Texto descriptivo
-    descriptionLabel = new QLabel("Associate .nk files with LGA_OpenInNukeX to open them directly in your preferred NukeX version", fileAssociationGroup);
+    descriptionLabel = new QLabel("Associate .nk files with OpenInNukeX to open them directly in your preferred NukeX version", fileAssociationGroup);
     descriptionLabel->setWordWrap(true);
-    descriptionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 14px; }");
+    descriptionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }");
     fileAssociationLayout->addWidget(descriptionLabel);
     fileAssociationLayout->addSpacing(15);
 
@@ -175,14 +175,14 @@ void ConfigWindow::setupUI()
     
     // Etiqueta descriptiva
     foundVersionsLabel = new QLabel("Choose one of the found versions or browse your own:", versionsContainer);
-    foundVersionsLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 14px; }");
+    foundVersionsLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }");
     foundVersionsLabel->setWordWrap(true);
     versionsLayout->addWidget(foundVersionsLabel);
     Logger::logInfo("✓ foundVersionsLabel creado y agregado");
     
     // Etiqueta de scanning (inicialmente visible)
     scanningLabel = new QLabel("🔍 Scanning for installed Nuke versions...", versionsContainer);
-    scanningLabel->setStyleSheet("QLabel { color: #4A9EFF; font-size: 14px; font-style: italic; }");
+    scanningLabel->setStyleSheet("QLabel { color: #4A9EFF; font-size: 15px; font-style: italic; }");
     versionsLayout->addWidget(scanningLabel);
     Logger::logInfo("✓ scanningLabel creado y agregado");
     
@@ -210,7 +210,7 @@ void ConfigWindow::setupUI()
     // Crear layout horizontal para el campo de path y el botón browse
     QHBoxLayout *nukePathLayout = new QHBoxLayout();
     nukePathLayout->setContentsMargins(0, 0, 0, 0);
-    nukePathLayout->setSpacing(10);
+    nukePathLayout->setSpacing(20);
     
     // Campo de entrada para la ruta de NukeX
     nukePathEdit = new QLineEdit(nukeVersionGroup);
@@ -238,7 +238,7 @@ void ConfigWindow::setupUI()
 
     saveButton = new QPushButton("SAVE", nukeVersionGroup);
     saveButton->setFixedHeight(40);
-    saveButton->setMinimumWidth(100);
+    saveButton->setMinimumWidth(70);
     saveButton->setProperty("class", "action");
 
     buttonLayout->addStretch();
@@ -766,7 +766,7 @@ void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
         // No se encontraron versiones
         if (scanningLabel) {
             scanningLabel->setText("❌ No Nuke installations found in common locations");
-            scanningLabel->setStyleSheet("QLabel { color: #FF6B6B; font-size: 14px; font-style: italic; }");
+            scanningLabel->setStyleSheet("QLabel { color: #FF6B6B; font-size: 15px; font-style: italic; }");
             scanningLabel->setVisible(true);
             Logger::logInfo("✓ Mensaje de 'no encontrado' mostrado");
         }
