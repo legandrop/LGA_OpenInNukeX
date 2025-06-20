@@ -33,9 +33,12 @@ if(WIN32)
     set_target_properties(LGA_OpenInNukeX PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
-    # Configurar el icono para Windows
-    target_sources(LGA_OpenInNukeX PRIVATE resources/app.rc)
+    # Configurar el icono y manifest para Windows (con permisos de admin)
+    target_sources(LGA_OpenInNukeX PRIVATE LGA_OpenInNukeX.rc)
     enable_language(RC)
+    
+    # Enlazar con librerías de Windows necesarias para asociaciones de archivos
+    target_link_libraries(LGA_OpenInNukeX shell32)
 endif()
 
 # Instalar el ejecutable

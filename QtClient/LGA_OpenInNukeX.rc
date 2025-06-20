@@ -1,29 +1,30 @@
-IDI_ICON1 ICON "LGA_NukeShortcuts.ico"
-
 #include <windows.h>
 
+// Icono de la aplicación
+IDI_ICON1 ICON DISCARDABLE "resources/LGA_NukeShortcuts.ico"
+
+// Manifest para solicitar permisos de administrador
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "LGA_OpenInNukeX.exe.manifest"
+
+// Información de versión
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     0,14,0,0
-PRODUCTVERSION  0,14,0,0
-FILEFLAGSMASK   0x17L
-#ifdef _DEBUG
-FILEFLAGS       0x1L
-#else
-FILEFLAGS       0x0L
-#endif
-FILEOS          0x4L
-FILETYPE        0x1L
-FILESUBTYPE     0x0L
+FILEVERSION 0,14,0,0
+PRODUCTVERSION 0,14,0,0
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "LGA"
-            VALUE "FileDescription", "LGA OpenInNukeX v0.14 - Open .nk files with your preferred NukeX version"
+            VALUE "FileDescription", "LGA OpenInNukeX - Nuke Script File Opener"
             VALUE "FileVersion", "0.14.0.0"
             VALUE "InternalName", "LGA_OpenInNukeX"
-            VALUE "LegalCopyright", "Copyright (C) 2024 LGA"
+            VALUE "LegalCopyright", "Copyright (C) 2025 LGA"
             VALUE "OriginalFilename", "LGA_OpenInNukeX.exe"
             VALUE "ProductName", "LGA OpenInNukeX"
             VALUE "ProductVersion", "0.14.0.0"

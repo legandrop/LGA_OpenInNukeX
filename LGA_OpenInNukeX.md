@@ -1,77 +1,231 @@
-# LGA_OpenInNukeX: Integración NukeX y Hiero
+# LGA_OpenInNukeX v0.14
 
-Sistema para optimizar el flujo de trabajo entre The Foundry NukeX y Hiero, permitiendo abrir scripts de Nuke (.nk) directamente desde Hiero o mediante aplicaciones cliente independientes desarrolladas en Python y Qt/C++.
+**Una aplicación portable en Qt/C++ para abrir archivos .nk directamente en NukeX desde el explorador de archivos de Windows.**
 
-## Propósito General
+## ✨ Características Principales
 
-Facilita la apertura eficiente de archivos .nk en NukeX mediante comunicación TCP con instancias en ejecución o lanzando nuevas instancias. Incluye funcionalidad de Hiero para localizar, verificar versiones y abrir scripts de Nuke asociados a clips seleccionados en la línea de tiempo.
+- **🚀 Aplicación portable**: No requiere instalación, funciona desde cualquier ubicación
+- **🔗 Asociación de archivos**: Establece LGA_OpenInNukeX como aplicación predeterminada para archivos .nk
+- **⚡ Apertura directa**: Doble clic en archivos .nk los abre automáticamente en NukeX
+- **🛠️ Configuración visual**: Interfaz gráfica para configurar la ruta de NukeX
+- **📝 Logging detallado**: Registro completo de operaciones para debugging
+- **🔒 Seguro**: Evita falsos positivos de antivirus (reemplaza ejecutable Python)
 
-## Componentes Principales
+## 🆕 Nuevo en v0.14: Solución Definitiva para Asociaciones
 
-### 1. Servidor NukeX
-**Archivo**: `LGA_OpenInNukeX/init.py`  
-Servidor TCP que se ejecuta al inicio de NukeX (no Nuke Studio) escuchando en puerto `54325`. Recibe rutas de archivos `.nk` y las abre en la instancia actual.
+### ⚠️ Problemas Resueltos: Windows 10/11 "App Default Reset" y "Comando Vacío"
 
-**Funciones principales**:
-- `nuke_server()`: Inicializa y gestiona el servidor TCP
-- `handle_client()`: Procesa comandos "ping" y "run_script" 
-- `run_script()`: Cierra proyecto actual (si modificado) y abre archivo .nk especificado
+**Problemas anteriores**: 
+- Windows 10/11 detectaba automáticamente cuando las aplicaciones modificaban las asociaciones de archivos directamente en el registro y las **reseteaba como "hijacking"**, mostrando el mensaje "An app default was reset"
+- Las asociaciones aparecían con **"comando vacío"** debido a conflictos en el registro UserChoice
 
-### 2. Cliente Python (Legacy)
-**Archivo**: `LGA_OpenInNukeX/Developement/LGA_OpenInNukeX.py`  
-**Ejecutable compilado**: `LGA_OpenInNukeX.exe`  
-Cliente original en Python compilado con PyInstaller. Recibe ruta de archivo .nk como argumento, intenta conexión TCP con servidor NukeX, o lanza nueva instancia si falla.
+**✅ Soluciones implementadas**: 
+- **Integración completa con SetUserFTA** - la única herramienta que puede establecer asociaciones de archivos sin que Windows las detecte como modificaciones no autorizadas
+- **Separación del registro**: Solo se registra el ProgID básico, SetUserFTA maneja completamente UserChoice con el hash correcto
+- **Copia automática de iconos**: El script deploy busca iconos en múltiples ubicaciones para asegurar que se incluyan correctamente
 
-**Funciones principales**:
-- `send_to_nuke()`: Gestiona conexión TCP o lanzamiento directo de NukeX
-- `get_nuke_path_from_file()`: Lee ruta de ejecutable desde `nukeXpath.txt`
-- `open_nuke_with_file()`: Abre nueva instancia de NukeX con archivo .nk
+### 🔧 SetUserFTA Integration
 
-### 3. Cliente Qt/C++ (Actual)
-**Directorio**: `LGA_OpenInNukeX/QtClient/`  
-**Archivos principales**:
-- `LGA_OpenInNukeX/QtClient/main.cpp`: Punto de entrada, manejo de argumentos, configuración AppData
-- `LGA_OpenInNukeX/QtClient/nukeopener.h`: Definición de clase NukeOpener 
-- `LGA_OpenInNukeX/QtClient/nukeopener.cpp`: Lógica de conexión TCP y lanzamiento de NukeX
-- `LGA_OpenInNukeX/QtClient/configwindow.h`: Definición de ventana de configuración
-- `LGA_OpenInNukeX/QtClient/configwindow.cpp`: Interfaz de configuración con fondo #161616
-- `LGA_OpenInNukeX/QtClient/logger.h`: Sistema de logging a AppData
-- `LGA_OpenInNukeX/QtClient/logger.cpp`: Implementación de logs detallados
-- `LGA_OpenInNukeX/QtClient/CMakeLists.txt`: Configuración CMake sin ventana de consola
-- `LGA_OpenInNukeX/QtClient/deploy.bat`: Script despliegue producción con limpieza automática
-- `LGA_OpenInNukeX/QtClient/limpiar.bat`: Script limpieza de archivos de compilación
+SetUserFTA es una herramienta desarrollada por Christoph Kolbicz que:
+- **Implementa el algoritmo hash correcto** para UserChoice en Windows 10/11
+- **Evita la detección de "hijacking"** por parte de Windows
+- **Funciona sin permisos de administrador**
+- **Es la solución recomendada por Microsoft IT Pros**
 
-Cliente desarrollado en Qt/C++ para evitar falsos positivos de antivirus del ejecutable Python. Ejecuta sin ventana de consola y guarda configuración en AppData. Con argumentos procesa archivos .nk, sin argumentos muestra interfaz de configuración moderna.
+**Integración automática**: El script `deploy.bat` busca SetUserFTA.exe en `scripts/deploy/` y lo incluye automáticamente en el paquete final.
 
-**Funciones principales**:
-- `main()`: Configuración de organización/aplicación para QStandardPaths, logging de directorio AppData
-- `NukeOpener::sendToNuke()`: Conexión TCP con timeout de 10 segundos
-- `NukeOpener::getNukePathFromFile()`: Lee configuración desde AppData con mensajes informativos
-- `NukeOpener::onConnected()`: Envío de comando "run_script||ruta_archivo"
-- `NukeOpener::openNukeWithFile()`: Lanzamiento de NukeX con argumentos --nukex
-- `ConfigWindow::saveNukePath()`: Guarda configuración en AppData con creación automática de directorios
-- `Logger::getLogFilePath()`: Retorna ruta de log en AppData con creación automática de directorios
+## 📋 Requisitos del Sistema
 
-**Configuración y archivos**:
-- **Configuración**: `C:\Users\[usuario]\AppData\Roaming\LGA\LGA_OpenInNukeX_Qt\nukeXpath.txt`
-- **Logs**: `C:\Users\[usuario]\AppData\Roaming\LGA\LGA_OpenInNukeX_Qt\LGA_OpenInNukeX_Qt.log`
-- **Ejecutable**: `LGA_OpenInNukeX_Qt.exe` (sin ventana de consola)
+- **Sistema Operativo**: Windows 10/11 (x64)
+- **NukeX**: Cualquier versión instalada
+- **Permisos**: Usuario estándar (no requiere administrador)
+- **Dependencias**: SetUserFTA.exe (descarga automática)
 
-### 4. Integración con Hiero
-**Archivo**: `Python/Startup/LGA_NKS/LGA_NKS_OpenInNukeX.py`  
-Integración que permite abrir scripts de Nuke desde línea de tiempo de Hiero. Identifica archivos fuente de clips, construye rutas a scripts .nk asociados (estructura `.../Comp/1_projects/`) y verifica versiones más recientes.
+## 🚀 Instalación y Uso
 
-**Funciones principales**:
-- `main()`: Orquesta selección de clips y determinación de rutas
-- `open_nuke_script()`: Comunicación con servidor NukeX
-- `find_latest_version()`: Busca versión más reciente basada en patrón `_v01`
-- `get_project_path()`: Extrae ruta de carpeta de proyecto desde clip
-- `show_version_dialog()`: Diálogo para selección de versión
+### Opción 1: Usar el Instalador (Recomendado)
 
-## Flujo de Trabajo
+1. **Descargar** el instalador desde las releases
+2. **Ejecutar** `LGA_OpenInNukeX_Installer.exe`
+3. **Seguir** el asistente de instalación
+4. **Configurar** la ruta de NukeX en la primera ejecución
 
-1. **Servidor NukeX**: `init.py` lanza servidor TCP al iniciar NukeX
-2. **Invocación**: Cliente recibe ruta .nk como argumento o muestra interfaz de configuración
-3. **Conexión TCP**: Intenta conectar a `localhost:54325` con timeout 10 segundos
-4. **Comando**: Envía `run_script||ruta_normalizada` si conecta exitosamente
-5. **Fallback**: Si falla conexión, lanza nueva instancia NukeX con `--nukex archivo.nk`
+### Opción 2: Uso Portable
+
+1. **Descargar** el archivo portable desde las releases
+2. **Extraer** en cualquier ubicación
+3. **Ejecutar** `LGA_OpenInNukeX.exe`
+4. **Configurar** la ruta de NukeX
+5. **Aplicar** asociación de archivos
+
+## ⚙️ Configuración
+
+### Primera Ejecución
+
+1. La aplicación abrirá automáticamente la ventana de configuración
+2. **Configurar ruta de NukeX**:
+   - Clic en "Examinar"
+   - Seleccionar `Nuke15.1.exe` (o tu versión)
+   - Clic en "Guardar Configuración"
+
+3. **Establecer asociación de archivos**:
+   - Clic en "Aplicar Asociación de Archivos"
+   - La aplicación usará SetUserFTA para establecer la asociación correctamente
+   - Confirmar en el mensaje de éxito
+
+### Verificación
+
+Después de la configuración:
+- Los archivos `.nk` mostrarán el icono de LGA_OpenInNukeX
+- Doble clic en un `.nk` abrirá NukeX automáticamente
+- No aparecerán mensajes de "App default reset"
+
+## 🔧 Desarrollo y Compilación
+
+### Estructura del Proyecto
+
+```
+LGA_OpenInNukeX/
+├── QtClient/                 # Aplicación Qt/C++
+│   ├── src/                 # Código fuente
+│   │   ├── main.cpp         # Punto de entrada
+│   │   ├── nukeopener.cpp   # Lógica principal
+│   │   ├── configwindow.cpp # Ventana de configuración
+│   │   └── logger.cpp       # Sistema de logging
+│   ├── resources/           # Recursos (iconos)
+│   ├── scripts/            # Scripts de build
+│   │   ├── compilar.bat    # Compilación
+│   │   ├── deploy.bat      # Deploy + SetUserFTA
+│   │   └── instalador.bat  # Crear instalador
+│   └── CMakeLists.txt      # Configuración CMake
+├── Developement/           # Versión Python original
+└── init.py                # Configuración inicial
+```
+
+### Compilar desde Código Fuente
+
+#### Requisitos de Desarrollo
+
+- **Qt 6.8.2** con MinGW 13.1.0
+- **CMake 3.25+**
+- **Git** para clonar el repositorio
+
+#### Pasos de Compilación
+
+```bash
+# 1. Clonar repositorio
+git clone <repository-url>
+cd LGA_OpenInNukeX/QtClient
+
+# 2. Descargar SetUserFTA.exe
+# Visita: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
+# Coloca SetUserFTA.exe en QtClient/scripts/deploy/
+
+# 3. Compilar y crear paquete deploy (incluye SetUserFTA)
+cd scripts
+deploy.bat
+
+# 4. Crear instalador (opcional)
+instalador.bat
+```
+
+### Scripts de Build
+
+- **`deploy.bat`**: Compila la aplicación en modo Release + crea paquete portable con SetUserFTA
+- **`instalador.bat`**: Genera instalador con Inno Setup
+- **`limpiar.bat`**: Limpia archivos de compilación
+
+## 📁 Archivos Importantes
+
+### Ejecutables
+- **`LGA_OpenInNukeX.exe`**: Aplicación principal
+- **`SetUserFTA.exe`**: Herramienta para asociaciones (descarga automática)
+
+### Configuración
+- **`nukeXpath.txt`**: Ruta de NukeX configurada
+- **`app_icon.ico`**: Icono para asociaciones de archivos
+
+### Logs
+- **`logs/LGA_OpenInNukeX_YYYY-MM-DD.log`**: Logs detallados de operaciones
+
+## 🔍 Resolución de Problemas
+
+### Problema: "SetUserFTA.exe no encontrado"
+
+**Causa**: SetUserFTA.exe no está en el directorio de la aplicación.
+
+**Solución**:
+1. Descargar SetUserFTA.exe desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
+2. Colocar `SetUserFTA.exe` en `QtClient/scripts/deploy/`
+3. Ejecutar `deploy.bat` para compilar y crear paquete completo
+
+### Problema: "Asociación no funciona" o "Comando vacío"
+
+**Causas posibles**: 
+- SetUserFTA.exe no está presente
+- Conflicto en el registro UserChoice
+- Windows detectó la asociación como "hijacking"
+
+**Solución**:
+1. Verificar que SetUserFTA.exe esté en el mismo directorio que LGA_OpenInNukeX.exe
+2. **IMPORTANTE**: Re-aplicar la asociación desde la ventana de configuración (esto limpia conflictos)
+3. Verificar logs para errores específicos
+4. Si persiste el problema, reiniciar Windows Explorer: `taskkill /f /im explorer.exe ; start explorer.exe`
+
+### Problema: "Error al abrir NukeX"
+
+**Causa**: Ruta de NukeX incorrecta o archivo no encontrado.
+
+**Solución**:
+1. Abrir ventana de configuración
+2. Verificar/actualizar ruta de NukeX
+3. Guardar configuración
+
+## 📚 Documentación Técnica
+
+### Algoritmo de Asociación de Archivos
+
+1. **Registro básico**: Crea ProgID y comando en `HKEY_CURRENT_USER\Software\Classes`
+2. **SetUserFTA**: Ejecuta `SetUserFTA.exe .nk LGA.NukeScript` para hash correcto
+3. **Notificación**: Llama `SHChangeNotify()` para actualizar explorador
+4. **Verificación**: Confirma que la asociación se estableció correctamente
+
+### Logging System
+
+Los logs se guardan en `logs/` con formato:
+```
+[YYYY-MM-DD HH:MM:SS] LEVEL: Mensaje
+```
+
+Niveles: `INFO`, `WARNING`, `ERROR`
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el repositorio
+2. Crear feature branch (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push branch (`git push origin feature/nueva-funcionalidad`)
+5. Crear Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo licencia MIT. Ver archivo `LICENSE` para detalles.
+
+## 🙏 Agradecimientos
+
+- **Christoph Kolbicz** por SetUserFTA - la solución definitiva para asociaciones en Windows 10/11
+- **Microsoft** por la documentación oficial sobre file associations
+- **Qt Framework** por las herramientas de desarrollo multiplataforma
+
+## 📞 Soporte
+
+Para reportar bugs o solicitar funcionalidades:
+1. Crear issue en GitHub
+2. Incluir logs relevantes
+3. Describir pasos para reproducir el problema
+
+---
+
+**LGA_OpenInNukeX v0.14** - Solución definitiva para asociaciones de archivos en Windows 10/11
