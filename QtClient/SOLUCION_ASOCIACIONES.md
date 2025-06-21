@@ -66,7 +66,7 @@ SetUserFTA es la única herramienta que puede establecer asociaciones correctame
 
 Los logs se guardan en:
 ```
-%APPDATA%\LGA\LGA_OpenInNukeX_Qt\logs\
+%APPDATA%\LGA\OpenInNukeX\logs\
 ```
 
 Revisa estos archivos si necesitas más información sobre errores. 

@@ -6,7 +6,7 @@ Cliente Qt/C++ para abrir archivos .nk en NukeX, reemplazando el ejecutable Pyth
 
 - **Sin ventana de consola**: Ejecutable configurado como aplicación Windows pura
 - **Asociación de archivos profesional**: Botón Apply con actualización inmediata del explorador usando SHChangeNotify
-- **Configuración en AppData**: Archivos de configuración y logs se guardan en `%AppData%\LGA\LGA_OpenInNukeX_Qt`
+- **Configuración en AppData**: Archivos de configuración y logs se guardan en `%AppData%\LGA\OpenInNukeX`
 - **Conexión TCP**: Conecta a instancia de NukeX en puerto 54325 con timeout de 10 segundos
 - **Fallback automático**: Si no hay conexión TCP, lanza nueva instancia de NukeX
 - **Interfaz de configuración moderna**: Ventana con botones Apply y Save, fondo #161616
@@ -151,8 +151,8 @@ La aplicación ahora usa las mejores prácticas de Windows para asociaciones:
 
 ### Ubicación de archivos
 - **Instalación**: `C:\Portable\LGA\OpenInNukeX\`
-- **Configuración**: `%AppData%\LGA\LGA_OpenInNukeX_Qt\nukeXpath.txt`
-- **Logs**: `%AppData%\LGA\LGA_OpenInNukeX_Qt\LGA_OpenInNukeX_Qt.log`
+- **Configuración**: `%AppData%\LGA\OpenInNukeX\nukeXpath.txt`
+- **Logs**: `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`
 - **Acceso directo**: `%USERPROFILE%\Desktop\LGA OpenInNukeX.lnk` (por defecto)
 
 ### Registro de Windows (asociaciones mejoradas)

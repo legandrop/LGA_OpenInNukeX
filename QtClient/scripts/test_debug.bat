@@ -4,17 +4,17 @@ echo     PROBANDO EJECUTABLE
 echo =================================
 
 echo Ejecutando sin argumentos:
-.\release\LGA_OpenInNukeX_Qt.exe
+.\release\OpenInNukeX.exe
 echo.
 
 echo Ejecutando con archivo de prueba:
-.\release\LGA_OpenInNukeX_Qt.exe "C:\Users\leg4-pc\.nuke\LGA_OpenInNukeX\QtClient\test_file.nk"
+.\release\OpenInNukeX.exe "C:\Users\leg4-pc\.nuke\LGA_OpenInNukeX\QtClient\test_file.nk"
 echo.
 
 echo Verificando log:
-if exist "LGA_OpenInNukeX_Qt.log" (
+if exist "OpenInNukeX.log" (
     echo === CONTENIDO DEL LOG ===
-    type "LGA_OpenInNukeX_Qt.log"
+    type "OpenInNukeX.log"
 ) else (
     echo No se creo archivo de log
 )

@@ -12,9 +12,9 @@ int main(int argc, char *argv[])
     
     // Configurar información de la organización para QStandardPaths
     QApplication::setOrganizationName("LGA");
-    QApplication::setApplicationName("LGA_OpenInNukeX_Qt");
+    QApplication::setApplicationName("OpenInNukeX");
     
-    Logger::logInfo("=== INICIANDO LGA_OpenInNukeX_Qt ===");
+    Logger::logInfo("=== INICIANDO OpenInNukeX ===");
     Logger::logInfo(QString("Directorio de configuración: %1").arg(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)));
     
     QStringList arguments = QApplication::arguments();

@@ -347,7 +347,7 @@ void ConfigWindow::saveConfiguration()
     QMessageBox::information(this, "Configuration Saved", "The NukeX path has been saved successfully.");
 
     // Cerrar la aplicación
-    QApplication::quit();
+    // QApplication::quit();
 }
 
 void ConfigWindow::saveNukePath(const QString &path)
