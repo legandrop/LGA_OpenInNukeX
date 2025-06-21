@@ -1,4 +1,4 @@
-# LGA_OpenInNukeX v1.50
+# LGA_OpenInNukeX v1.51
 
 **Una aplicación portable en Qt/C++ para abrir archivos .nk directamente en NukeX desde el explorador de archivos de Windows.**
 
@@ -240,5 +240,3 @@ Para reportar bugs o solicitar funcionalidades:
 3. Describir pasos para reproducir el problema
 
 ---
-
-**LGA_OpenInNukeX v1.50** - Asociaciones de archivos robustas para Windows 10/11

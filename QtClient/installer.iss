@@ -1,8 +1,8 @@
 ; Script generado por Inno Setup Script Wizard.
-; LGA OpenInNukeX v1.50 Installer
+; LGA OpenInNukeX v1.51 Installer
 
 #define MyAppName "LGA OpenInNukeX"
-#define MyAppVersion "1.50"
+#define MyAppVersion "1.51"
 #define MyAppPublisher "LGA"
 #define MyAppURL "https://github.com/LGA"
 #define MyAppExeName "LGA_OpenInNukeX.exe"
@@ -20,7 +20,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName=C:\Portable\LGA\OpenInNukeX
+DefaultDirName={pf64}\LGA\OpenInNukeX
 DefaultGroupName=OpenInNukeX
 AllowNoIcons=yes
 LicenseFile=

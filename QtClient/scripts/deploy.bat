@@ -1,6 +1,6 @@
 @echo off
 echo ===============================================
-echo    LGA_OpenInNukeX - Script de Deploy v1.50
+echo    LGA_OpenInNukeX - Script de Deploy v1.51
 echo ===============================================
 
 REM Cerrar cualquier instancia de la aplicación que pueda estar ejecutándose
