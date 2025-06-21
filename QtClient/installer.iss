@@ -1,8 +1,8 @@
 ; Script generado por Inno Setup Script Wizard.
-; LGA OpenInNukeX v0.14 Installer
+; LGA OpenInNukeX v1.50 Installer
 
 #define MyAppName "LGA OpenInNukeX"
-#define MyAppVersion "0.14"
+#define MyAppVersion "1.50"
 #define MyAppPublisher "LGA"
 #define MyAppURL "https://github.com/LGA"
 #define MyAppExeName "LGA_OpenInNukeX.exe"
@@ -27,7 +27,7 @@ LicenseFile=
 InfoBeforeFile=
 InfoAfterFile=
 OutputDir=installer_output
-OutputBaseFilename=LGA_OpenInNukeX_v{#MyAppVersion}_Setup
+OutputBaseFilename=LGA_OpenInNukeX_Setup
 SetupIconFile=resources\LGA_NukeShortcuts.ico
 Compression=lzma
 SolidCompression=yes
@@ -41,7 +41,7 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "release\deploy\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion

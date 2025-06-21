@@ -1,11 +1,12 @@
 @echo off
 echo ===============================================
-echo    LGA_OpenInNukeX - Script de Deploy v0.14
+echo    LGA_OpenInNukeX - Script de Deploy v1.50
 echo ===============================================
 
 REM Cerrar cualquier instancia de la aplicación que pueda estar ejecutándose
 echo Cerrando instancias previas de LGA_OpenInNukeX...
-taskkill /f /im LGA_OpenInNukeX.exe 2>nul
+REM El comando taskkill puede requerir que este script se ejecute como administrador si LGA_OpenInNukeX.exe se está ejecutando con privilegios elevados.
+taskkill /f /im LGA_OpenInNukeX.exe
 echo ✓ Instancias cerradas
 
 REM Configurar el entorno de Qt
@@ -19,8 +20,8 @@ echo    COMPILANDO PARA PRODUCCION
 echo =================================
 
 REM Limpiar archivos anteriores
-echo Limpiando archivos anteriores...
-call limpiar.bat >nul 2>&1
+REM echo Limpiando archivos anteriores...
+REM call limpiar.bat >nul 2>&1
 
 REM Cambiar al directorio padre (QtClient)
 cd ..
@@ -176,6 +177,8 @@ echo de archivos funcionen correctamente en Windows 10/11.
 echo Sin él, Windows detectará las asociaciones como
 echo "hijacking" y las reseteará automáticamente.
 echo.
+
+LGA_OpenInNukeX.exe
 
 REM Volver al directorio de scripts
 cd ..\..\scripts

@@ -53,6 +53,7 @@ private:
     // Scanner de versiones
     void initializeScanner();
     void createVersionButtons(const QList<NukeVersion> &versions);
+    void calculateAndResizeWindow();
 
     QLineEdit *nukePathEdit;
     QPushButton *browseButton;

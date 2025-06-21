@@ -80,7 +80,7 @@ void ConfigWindow::setupUI()
     
     // Crear un layout para centrar el contenido horizontalmente
     QHBoxLayout *horizontalCenterLayout = new QHBoxLayout(centralWidget);
-    horizontalCenterLayout->setContentsMargins(0, 0, 0, 20);
+    horizontalCenterLayout->setContentsMargins(0, 20, 0, 20);
     horizontalCenterLayout->setSpacing(0);
     
     // Crear un widget contenedor para el contenido real
@@ -91,7 +91,7 @@ void ConfigWindow::setupUI()
     // Layout para el contenido
     QVBoxLayout *centralLayout = new QVBoxLayout(contentWidget);
     centralLayout->setContentsMargins(20, 20, 20, 20);
-    centralLayout->setSpacing(15);
+    centralLayout->setSpacing(24);
     
     // Agregar el widget de contenido al layout horizontal centrado
     horizontalCenterLayout->addStretch();
@@ -250,7 +250,22 @@ void ConfigWindow::setupUI()
     centralLayout->addWidget(nukeVersionGroup);
     
     // Agregar un stretch al final para evitar que los widgets se estiren verticalmente
-    centralLayout->addStretch(1);
+    centralLayout->addSpacing(-20);
+
+    // Añadir label de versión y autor
+    QLabel *versionLabel = new QLabel("v1.5 | Lega", contentWidget);
+    versionLabel->setObjectName("versionLabel"); // Añadir un objectName para posible estilo futuro
+    versionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }"); // Mismo estilo que descriptionLabel
+    versionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter); // Alinear a la derecha y al centro verticalmente
+    
+    // Crear un layout horizontal para contener el versionLabel y empujarlo a la derecha
+    QHBoxLayout *versionLayout = new QHBoxLayout();
+    versionLayout->addStretch(1); // Empuja el label a la derecha
+    versionLayout->addWidget(versionLabel);
+    versionLayout->setContentsMargins(0, 0, 0, 0); // Márgenes para el layout de la versión
+
+    centralLayout->addLayout(versionLayout); // Añadir el layout de la versión al layout central
+    centralLayout->addSpacing(-40);
 
     // Conectar señales y slots
     connect(browseButton, &QPushButton::clicked, this, &ConfigWindow::browseNukePath);
@@ -309,14 +324,14 @@ void ConfigWindow::saveConfiguration()
 
     if (nukePath.isEmpty())
     {
-        QMessageBox::warning(this, "Error", "Por favor, selecciona una ruta válida para NukeX.");
+        QMessageBox::warning(this, "Error", "Please select a valid path for NukeX.");
         return;
     }
 
     // Verificar que el archivo existe
     if (!QFile::exists(nukePath))
     {
-        QMessageBox::warning(this, "Error", "El archivo seleccionado no existe.");
+        QMessageBox::warning(this, "Error", "The selected file does not exist.");
         return;
     }
 
@@ -324,12 +339,12 @@ void ConfigWindow::saveConfiguration()
     QString fileName = QFileInfo(nukePath).fileName().toLower();
     if (!fileName.contains("nuke"))
     {
-        QMessageBox::warning(this, "Advertencia", "El archivo seleccionado no parece ser un ejecutable de Nuke.");
+        QMessageBox::warning(this, "Warning", "The selected file does not appear to be a Nuke executable.");
     }
 
     saveNukePath(nukePath);
 
-    QMessageBox::information(this, "Configuración Guardada", "La ruta de NukeX se ha guardado correctamente.");
+    QMessageBox::information(this, "Configuration Saved", "The NukeX path has been saved successfully.");
 
     // Cerrar la aplicación
     QApplication::quit();
@@ -359,26 +374,13 @@ void ConfigWindow::applyFileAssociation()
     
     if (nukePath.isEmpty()) {
         Logger::logError("Error: Ruta de NukeX vacía");
-        QMessageBox::warning(this, "Error", "Por favor, selecciona una ruta válida para NukeX primero.");
+        QMessageBox::warning(this, "Error", "Please select a valid path for NukeX first.");
         return;
     }
     
     if (!QFile::exists(nukePath)) {
         Logger::logError(QString("Error: El archivo no existe: %1").arg(nukePath));
-        QMessageBox::warning(this, "Error", "El archivo seleccionado no existe.");
-        return;
-    }
-    
-    Logger::logInfo("Mostrando diálogo de confirmación al usuario");
-    // Mostrar mensaje de confirmación
-    QMessageBox::StandardButton reply = QMessageBox::question(this, 
-        "Confirmar Asociación", 
-        "¿Deseas asociar los archivos .nk con esta aplicación?\n\n"
-        "Esto modificará el registro de Windows para que los archivos .nk se abran con NukeX.",
-        QMessageBox::Yes | QMessageBox::No);
-        
-    if (reply != QMessageBox::Yes) {
-        Logger::logInfo("Usuario canceló la asociación");
+        QMessageBox::warning(this, "Error", "The selected file does not exist.");
         return;
     }
     
@@ -394,14 +396,14 @@ void ConfigWindow::applyFileAssociation()
         executeRegistryCommands();
         
         Logger::logInfo("Asociación completada exitosamente");
-        QMessageBox::information(this, "Asociación Completada", 
-            "La asociación de archivos .nk se ha configurado correctamente.\n\n"
-            "Ahora puedes hacer doble click en archivos .nk para abrirlos con NukeX.");
+        QMessageBox::information(this, "Association Completed", 
+            "The .nk file association has been successfully configured.\n\n"
+            "You can now double-click .nk files to open them with NukeX.");
             
     } catch (const std::exception& e) {
         Logger::logError(QString("Excepción durante asociación: %1").arg(e.what()));
         QMessageBox::critical(this, "Error", 
-            QString("Error al configurar la asociación de archivos:\n%1").arg(e.what()));
+            QString("Error configuring file association:\n%1").arg(e.what()));
     }
 }
 
@@ -443,9 +445,9 @@ void ConfigWindow::executeRegistryCommands()
     
     if (!errors.isEmpty()) {
         Logger::logError(QString("Se encontraron errores: %1").arg(errors.join("; ")));
-        QMessageBox::warning(this, "Advertencias", 
-            "Se encontraron algunos problemas:\n" + errors.join("\n") + 
-            "\n\nLa asociación puede no funcionar completamente.");
+        QMessageBox::warning(this, "Warnings", 
+            "Some issues were found:\n" + errors.join("\n") + 
+            "\n\nFile association may not work completely.");
     }
     
     // Notificar cambios al explorador
@@ -792,6 +794,9 @@ void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
     } else {
         Logger::logError("ERROR: foundVersionsLabel es nullptr al actualizar");
     }
+
+    // Calcular y ajustar el tamaño de la ventana para acomodar los nuevos elementos
+    calculateAndResizeWindow();
 }
 
 void ConfigWindow::createVersionButtons(const QList<NukeVersion> &versions)
@@ -855,4 +860,49 @@ void ConfigWindow::onVersionButtonClicked()
         nukePathEdit->setText(nukePath);
         Logger::logInfo("✓ Campo de texto actualizado con la ruta seleccionada");
     }
+}
+
+void ConfigWindow::calculateAndResizeWindow()
+{
+    Logger::logInfo("=== CALCULANDO Y REDIMENSIONANDO VENTANA ===");
+    
+    // Forzar que todos los widgets calculen su tamaño
+    this->updateGeometry();
+    QApplication::processEvents();
+    
+    // Obtener el tamaño recomendado del contenido principal
+    QWidget *centralWidget = this->findChild<QWidget*>("centralSettingsWidget");
+    if (!centralWidget) {
+        Logger::logError("ERROR: No se pudo encontrar centralSettingsWidget");
+        return;
+    }
+    
+    // Calcular la altura necesaria basándose en el contenido
+    int contentHeight = centralWidget->sizeHint().height();
+    Logger::logInfo(QString("Altura sugerida del contenido: %1").arg(contentHeight));
+    
+    // Agregar márgenes y espacios adicionales
+    int margins = 40; // Márgenes superior e inferior
+    int scrollBarSpace = 20; // Espacio para posible scroll bar
+    int totalHeight = contentHeight + margins + scrollBarSpace;
+    
+    // Establecer límites mínimos y máximos
+    int minHeight = 400;
+    int maxHeight = 1000;
+    
+    // Ajustar dentro de los límites
+    if (totalHeight < minHeight) {
+        totalHeight = minHeight;
+        Logger::logInfo(QString("Altura ajustada al mínimo: %1").arg(totalHeight));
+    } else if (totalHeight > maxHeight) {
+        totalHeight = maxHeight;
+        Logger::logInfo(QString("Altura ajustada al máximo: %1").arg(totalHeight));
+    }
+    
+    Logger::logInfo(QString("Altura final calculada: %1").arg(totalHeight));
+    
+    // Redimensionar la ventana manteniendo el ancho fijo de 900px
+    this->setFixedSize(800, totalHeight);
+    
+    Logger::logInfo(QString("Ventana redimensionada a: 900x%1").arg(totalHeight));
 }

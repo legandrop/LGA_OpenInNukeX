@@ -22,12 +22,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "LGA"
             VALUE "FileDescription", "LGA OpenInNukeX - Nuke Script File Opener"
-            VALUE "FileVersion", "0.14.0.0"
+            VALUE "FileVersion", "1.50.0.0"
             VALUE "InternalName", "LGA_OpenInNukeX"
             VALUE "LegalCopyright", "Copyright (C) 2025 LGA"
             VALUE "OriginalFilename", "LGA_OpenInNukeX.exe"
             VALUE "ProductName", "LGA OpenInNukeX"
-            VALUE "ProductVersion", "0.14.0.0"
+            VALUE "ProductVersion", "1.50.0.0"
         END
     END
     BLOCK "VarFileInfo"
