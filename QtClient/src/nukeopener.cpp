@@ -9,6 +9,10 @@
 #include <QProcess>
 #include <QDebug>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 NukeOpener::NukeOpener(QObject *parent)
     : QObject(parent)
     , socket(nullptr)
@@ -66,6 +70,40 @@ void NukeOpener::openNukeWithFile(const QString &nukeExecutablePath, const QStri
     
     Logger::logInfo(QString("Argumentos: %1").arg(arguments.join(" ")));
     
+    #ifdef Q_OS_WIN
+    // En Windows, usar CreateProcess directamente con CREATE_NEW_CONSOLE
+    STARTUPINFOW startupInfo = { sizeof(STARTUPINFOW) };
+    PROCESS_INFORMATION processInfo;
+    
+    QString commandLine = QString("\"%1\" %2").arg(nukeExecutablePath).arg(arguments.join(" "));
+    std::wstring wCommandLine = commandLine.toStdWString();
+    
+    Logger::logInfo(QString("Comando completo: %1").arg(commandLine));
+    
+    BOOL success = CreateProcessW(
+        NULL,                                // No module name (use command line)
+        &wCommandLine[0],                    // Command line
+        NULL,                                // Process handle not inheritable
+        NULL,                                // Thread handle not inheritable
+        FALSE,                               // Set handle inheritance to FALSE
+        CREATE_NEW_CONSOLE,                  // Creation flags - CREAR NUEVA CONSOLA
+        NULL,                                // Use parent's environment block
+        NULL,                                // Use parent's starting directory
+        &startupInfo,                        // Pointer to STARTUPINFO structure
+        &processInfo                         // Pointer to PROCESS_INFORMATION structure
+    );
+    
+    if (success) {
+        Logger::logInfo("NukeX iniciado exitosamente con nueva consola");
+        CloseHandle(processInfo.hProcess);
+        CloseHandle(processInfo.hThread);
+    } else {
+        DWORD error = GetLastError();
+        Logger::logError(QString("Error al iniciar proceso con CreateProcess: %1").arg(error));
+        showMessage(QString("Error al abrir Nuke con el archivo. Código de error: %1").arg(error));
+    }
+    #else
+    // En sistemas Unix, usar QProcess normal
     QProcess *process = new QProcess(this);
     bool started = process->startDetached(nukeExecutablePath, arguments);
     
@@ -77,6 +115,7 @@ void NukeOpener::openNukeWithFile(const QString &nukeExecutablePath, const QStri
     }
     
     process->deleteLater();
+    #endif
 }
 
 void NukeOpener::sendToNuke(const QString &filepath, const QString &host, int port)

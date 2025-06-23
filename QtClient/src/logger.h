@@ -14,6 +14,7 @@ public:
     static void log(const QString &message);
     static void logError(const QString &error);
     static void logInfo(const QString &info);
+    static void clearLogFile();
     
 private:
     static QString getLogFilePath();

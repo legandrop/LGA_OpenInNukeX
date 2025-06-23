@@ -1,4 +1,7 @@
 @echo off
+
+echo IMPORTANTE: HAY QUE ABRIR ESTE SCRIPT DESDE DENTRO DE LA CARPETA QtClient\scripts\
+
 echo ===============================================
 echo    LGA_OpenInNukeX - Script de Deploy v1.51
 echo ===============================================

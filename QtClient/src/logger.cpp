@@ -36,4 +36,12 @@ void Logger::logError(const QString &error)
 void Logger::logInfo(const QString &info)
 {
     writeToLog("INFO", info);
+}
+
+void Logger::clearLogFile()
+{
+    QFile logFile(getLogFilePath());
+    if (logFile.exists()) {
+        logFile.remove();
+    }
 } 

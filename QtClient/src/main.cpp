@@ -14,6 +14,9 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName("LGA");
     QApplication::setApplicationName("OpenInNukeX");
     
+    // Limpiar archivo de logs al inicio
+    Logger::clearLogFile();
+    
     Logger::logInfo("=== INICIANDO OpenInNukeX ===");
     Logger::logInfo(QString("Directorio de configuración: %1").arg(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)));
     
