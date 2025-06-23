@@ -1,4 +1,9 @@
+echo IMPORTANTE: HAY QUE ABRIR ESTE SCRIPT DESDE DENTRO DE LA CARPETA QtClient\scripts\
+echo IMPORTANTE: SE USA EL DEPLOY.BAT, ESTE NO SE USA
+
 @echo off
+
+
 echo =================================
 echo    COMPILANDO PARA DESARROLLO
 echo =================================

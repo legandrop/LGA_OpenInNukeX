@@ -253,7 +253,7 @@ void ConfigWindow::setupUI()
     centralLayout->addSpacing(-20);
 
     // Añadir label de versión y autor
-    QLabel *versionLabel = new QLabel("v1.51 | Lega", contentWidget);
+    QLabel *versionLabel = new QLabel("v1.52 | Lega", contentWidget);
     versionLabel->setObjectName("versionLabel"); // Añadir un objectName para posible estilo futuro
     versionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }"); // Mismo estilo que descriptionLabel
     versionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter); // Alinear a la derecha y al centro verticalmente

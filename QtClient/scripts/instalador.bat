@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal EnableDelayedExpansion
 
 echo ================================================================
-echo           LGA OpenInNukeX v1.51 - Generador de Instalador
+echo           LGA OpenInNukeX v1.52 - Generador de Instalador
 echo ================================================================
 echo.
 
@@ -99,7 +99,7 @@ if exist "%INSTALLER_FILE%" (
     for %%A in ("%INSTALLER_FILE%") do echo %%~zA bytes
     echo.
     echo El instalador incluye:
-    echo ✓ Aplicación LGA OpenInNukeX v1.51
+    echo ✓ Aplicación LGA OpenInNukeX v1.52
     echo ✓ Todas las dependencias Qt necesarias
     echo ✓ Icono LGA_NukeShortcuts para la aplicación
     echo ✓ Icono app_icon para archivos .nk asociados

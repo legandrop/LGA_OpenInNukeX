@@ -20,13 +20,13 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "LGA"
-            VALUE "FileDescription", "LGA OpenInNukeX v1.51 - Open .nk files with your preferred NukeX version"
-            VALUE "FileVersion", "1.51.0.0"
+            VALUE "FileDescription", "LGA OpenInNukeX v1.52 - Open .nk files with your preferred NukeX version"
+            VALUE "FileVersion", "1.52.0.0"
             VALUE "InternalName", "LGA_OpenInNukeX"
             VALUE "LegalCopyright", "Copyright (C) 2024 LGA"
             VALUE "OriginalFilename", "LGA_OpenInNukeX.exe"
             VALUE "ProductName", "LGA OpenInNukeX"
-            VALUE "ProductVersion", "1.51.0.0"
+            VALUE "ProductVersion", "1.52.0.0"
         END
     END
     BLOCK "VarFileInfo"
