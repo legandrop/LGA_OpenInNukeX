@@ -150,9 +150,9 @@ void NukeOpener::sendToNuke(const QString &filepath, const QString &host, int po
     connect(socket, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::errorOccurred),
             this, &NukeOpener::onErrorOccurred);
     
-    // Configurar timeout de 2 segundos
+    // Configurar timeout de 4 segundos
     Logger::logInfo("Configurando timeout de 2 segundos...");
-    timeoutTimer->start(2000);
+    timeoutTimer->start(4000);
     
     // Intentar conectar
     Logger::logInfo(QString("Intentando conectar a %1:%2...").arg(host).arg(port));
@@ -227,12 +227,12 @@ void NukeOpener::onErrorOccurred(QAbstractSocket::SocketError error)
         }
     } else if (error == QAbstractSocket::RemoteHostClosedError) {
         Logger::logError("La conexión fue cerrada por el servidor");
-        showMessage("The connection was closed by the server.");
+        // showMessage("The connection was closed by the server.");
         Logger::logInfo("Cerrando aplicación tras cierre remoto");
         QApplication::quit();
     } else {
         Logger::logError(QString("Error de conexión desconocido: %1").arg(socket->errorString()));
-        showMessage(QString("Connection error: %1").arg(socket->errorString()));
+        // showMessage(QString("Connection error: %1").arg(socket->errorString()));
         Logger::logInfo("Cerrando aplicación tras error desconocido");
         QApplication::quit();
     }
