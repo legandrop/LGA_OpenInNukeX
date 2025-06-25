@@ -131,9 +131,8 @@ if %errorlevel% == 0 (
     echo ❌ ERROR: SetUserFTA fallo con codigo %errorlevel%
     echo.
     echo Posibles soluciones:
-    echo 1. Ejecuta este script como administrador
-    echo 2. Verifica que el antivirus no bloquee SetUserFTA
-    echo 3. Reinicia Windows y vuelve a intentar
+    echo 1. Verifica que el antivirus no bloquee SetUserFTA
+    echo 2. Reinicia Windows y vuelve a intentar
     pause
     exit /b 1
 )

@@ -7,12 +7,12 @@
     type="win32" />
   <description>LGA OpenInNukeX - Nuke Script File Opener</description>
   
-  <!-- Solicitar permisos de administrador -->
+  <!-- NO solicitar permisos de administrador -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
         <requestedExecutionLevel 
-          level="requireAdministrator" 
+          level="asInvoker" 
           uiAccess="false"/>
       </requestedPrivileges>
     </security>

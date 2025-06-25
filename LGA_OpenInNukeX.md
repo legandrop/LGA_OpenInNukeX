@@ -154,7 +154,7 @@ instalador.bat
 - **`dark_theme.qss`**: Archivo de estilo para la interfaz moderna
 
 ### Logs
-- **`logs/LGA_OpenInNukeX_YYYY-MM-DD.log`**: Logs detallados de operaciones
+- **`%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`**: Logs detallados (se borra al iniciar la app)
 
 ## 🔍 Resolución de Problemas
 
@@ -162,12 +162,11 @@ instalador.bat
 
 **Causas posibles**: 
 - Conflictos en el registro de asociaciones previas
-- Permisos insuficientes para modificar el registro
 - Ruta de NukeX incorrecta
 
 **Solución**:
 1. **Re-aplicar la asociación**: Usar el botón "APPLY" en la ventana de configuración (esto limpia conflictos automáticamente)
-2. **Verificar logs**: Revisar `logs/LGA_OpenInNukeX_YYYY-MM-DD.log` para errores específicos
+2. **Verificar logs**: Revisar `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log` para errores específicos
 3. **Verificar ruta de NukeX**: Asegurar que la ruta configurada sea correcta y el archivo exista
 4. **Reiniciar Explorer**: Si persiste, ejecutar `taskkill /f /im explorer.exe ; start explorer.exe`
 
@@ -205,11 +204,12 @@ La función `applyFileAssociation()` en `QtClient/src/configwindow.cpp` ejecuta 
 
 ### Logging System
 
-Los logs se guardan en `logs/` con formato:
+Los logs se guardan en `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`:
 ```
 [YYYY-MM-DD HH:MM:SS] LEVEL: Mensaje
 ```
 
+El archivo se borra cada vez que inicia la aplicación.
 Niveles: `INFO`, `WARNING`, `ERROR`
 
 ## 🤝 Contribuciones

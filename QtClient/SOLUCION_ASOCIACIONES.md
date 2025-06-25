@@ -66,7 +66,7 @@ SetUserFTA es la única herramienta que puede establecer asociaciones correctame
 
 Los logs se guardan en:
 ```
-%APPDATA%\LGA\OpenInNukeX\logs\
+%APPDATA%\LGA\OpenInNukeX\OpenInNukeX.log
 ```
 
 Revisa estos archivos si necesitas más información sobre errores. 

@@ -65,6 +65,5 @@ echo.
 echo Si el problema persiste:
 echo 1. Reinicia el Explorador de Windows
 echo 2. Reinicia el ordenador
-echo 3. Ejecuta como administrador
 echo.
 pause 

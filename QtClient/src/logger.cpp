@@ -2,14 +2,15 @@
 #include <QStandardPaths>
 #include <QCoreApplication>
 #include <QDir>
+#include <QDateTime>
 
 QString Logger::getLogFilePath()
 {
-    // Crear carpeta logs en el directorio del ejecutable
-    QString appDir = QCoreApplication::applicationDirPath();
-    QString logsDir = QDir(appDir).filePath("logs");
-    QDir().mkpath(logsDir); // Crear directorio logs si no existe
-    return QDir(logsDir).filePath("OpenInNukeX.log");
+    // Crear carpeta de logs en AppData junto con la configuración
+    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(configDir); // Crear directorio si no existe
+    
+    return QDir(configDir).filePath("OpenInNukeX.log");
 }
 
 void Logger::writeToLog(const QString &level, const QString &message)

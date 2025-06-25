@@ -150,10 +150,10 @@ La aplicación ahora usa las mejores prácticas de Windows para asociaciones:
 ## Configuración y Datos
 
 ### Ubicación de archivos
-- **Instalación**: `C:\Portable\LGA\OpenInNukeX\`
+- **Instalación**: `C:\Users\[Usuario]\AppData\Local\Programs\LGA\OpenInNukeX\` (o personalizada)
 - **Configuración**: `%AppData%\LGA\OpenInNukeX\nukeXpath.txt`
 - **Logs**: `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`
-- **Acceso directo**: `%USERPROFILE%\Desktop\LGA OpenInNukeX.lnk` (por defecto)
+- **Acceso directo**: `%USERPROFILE%\Desktop\LGA OpenInNukeX.lnk` (opcional)
 
 ### Registro de Windows (asociaciones mejoradas)
 - **Extensión**: `HKEY_CLASSES_ROOT\.nk`
@@ -194,8 +194,9 @@ C:\Portable\LGA\OpenInNukeX\
 ## Características de Seguridad
 
 - **Sin falsos positivos**: Cliente nativo Qt en lugar de Python
-- **Instalador profesional**: Uso de Inno Setup, herramienta estándar reconocida
-- **Permisos mínimos**: Solo requiere administrador para instalación/asociaciones
+- **Instalador sin privilegios**: Uso de Inno Setup con permisos mínimos del usuario
+- **Sin permisos de administrador**: Toda la funcionalidad funciona con permisos de usuario estándar
+- **Asociaciones de archivos por usuario**: Usa `HKEY_CURRENT_USER` y SetUserFTA para asociaciones sin permisos elevados
 - **Limpieza completa**: Desinstalador integrado remueve todas las trazas del sistema
 - **Verificación de integridad**: El instalador valida archivos antes de proceder
 - **Distribución segura**: Un solo archivo .exe firmado digitalmente (opcional)

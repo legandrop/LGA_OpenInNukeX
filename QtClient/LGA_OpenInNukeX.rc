@@ -3,7 +3,7 @@
 // Icono de la aplicación
 IDI_ICON1 ICON DISCARDABLE "resources/LGA_NukeShortcuts.ico"
 
-// Manifest para solicitar permisos de administrador
+// Manifest de la aplicación (sin permisos de administrador)
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "LGA_OpenInNukeX.exe.manifest"
 
 // Información de versión
