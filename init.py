@@ -59,9 +59,32 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
         else:
             # nuke.message('El proyecto fue cerrado.')
             nuke.scriptOpen(filepath)  # Abre el nuevo archivo .nk
-            # Intentar traer Nuke al frente
-            QApplication.instance().activeWindow().raise_()
-            QApplication.instance().activeWindow().activateWindow()
+            
+            # Intentar traer Nuke al frente con verificaciones de seguridad
+            try:
+                app_instance = QApplication.instance()
+                if app_instance:
+                    active_window = app_instance.activeWindow()
+                    if active_window:
+                        active_window.raise_()
+                        active_window.activateWindow()
+                    else:
+                        # Si no hay ventana activa, intentar usar la ventana principal de Nuke
+                        main_window = None
+                        for widget in app_instance.topLevelWidgets():
+                            if widget.isWindow() and widget.isVisible():
+                                main_window = widget
+                                break
+                        if main_window:
+                            main_window.raise_()
+                            main_window.activateWindow()
+                        else:
+                            print("No se pudo encontrar una ventana de Nuke para activar")
+                else:
+                    print("No se pudo obtener la instancia de QApplication")
+            except Exception as e:
+                print(f"Error al intentar activar la ventana de Nuke: {e}")
+                # El script se abrirá de todas formas, solo no se activará la ventana
 
     # Configuracion y lanzamiento del servidor
     def nuke_server(port=54325):

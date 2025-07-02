@@ -85,7 +85,7 @@ Este documento detalla todos los cambios realizados para que **LGA_OpenInNukeX**
 
 ## 🚀 Resultado Final
 
-**LGA_OpenInNukeX v1.52** ahora funciona completamente **sin permisos de administrador**:
+**LGA_OpenInNukeX v1.54** ahora funciona completamente **sin permisos de administrador**:
 
 - ✅ Aplicación ejecuta con permisos de usuario estándar
 - ✅ Instalador no requiere UAC

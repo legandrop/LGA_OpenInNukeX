@@ -3,7 +3,7 @@
 echo IMPORTANTE: HAY QUE ABRIR ESTE SCRIPT DESDE DENTRO DE LA CARPETA QtClient\scripts\
 
 echo ===============================================
-echo    LGA_OpenInNukeX - Script de Deploy v1.52
+echo    LGA_OpenInNukeX - Script de Deploy v1.54
 echo ===============================================
 
 REM Cerrar cualquier instancia de la aplicación que pueda estar ejecutándose

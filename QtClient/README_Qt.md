@@ -1,4 +1,4 @@
-# LGA_OpenInNukeX v1.52
+# LGA_OpenInNukeX v1.54
 
 Cliente Qt/C++ para abrir archivos .nk en NukeX, reemplazando el ejecutable Python para evitar falsos positivos de antivirus.
 
@@ -81,7 +81,7 @@ instalador.bat
 - **Sin falsos positivos** de antivirus
 - **Aplicación totalmente portable** - no requiere PATH del sistema
 
-### Instalador generado: `LGA_OpenInNukeX_v1.52_Setup.exe`
+### Instalador generado: `LGA_OpenInNukeX_v1.54_Setup.exe`
 - Tamaño compacto con compresión LZMA
 - Interfaz moderna en español/inglés
 - Verificación de integridad de archivos
