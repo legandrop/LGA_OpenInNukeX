@@ -1,7 +1,7 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.2 - Lega Pugliese
+  LGA_OpenInNukeX v1.21 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 ______________________________________________________________________________________
 
@@ -48,7 +48,7 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
 
     def run_script(filepath):
         import nuke
-        from PySide2.QtWidgets import QApplication
+        from qt_compat_openinnukex import QApplication
 
         # Cierra el proyecto actual si esta modificado y lo verifica
         proyecto_modificado = nuke.root().modified()
