@@ -48,7 +48,7 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
 
     def run_script(filepath):
         import nuke
-        from qt_compat_openinnukex import QApplication
+        from LGA_QtAdapter_OpenInNukeX import QApplication
 
         # Cierra el proyecto actual si esta modificado y lo verifica
         proyecto_modificado = nuke.root().modified()
