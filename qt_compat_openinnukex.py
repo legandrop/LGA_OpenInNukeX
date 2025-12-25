@@ -1,63 +1,102 @@
 """
-Qt compatibility layer for LGA_OpenInNukeX
-Provides unified imports for PySide6 (Nuke 16) and PySide2 (Nuke 15)
+Compatibilidad Qt para LGA_OpenInNukeX - Nuke 15/16.
 """
 
-try:
-    from PySide6 import QtWidgets, QtGui, QtCore  # type: ignore
-    from PySide6.QtWidgets import QApplication  # type: ignore
-    from PySide6.QtGui import QAction, QGuiApplication  # type: ignore
-    from PySide6.QtCore import QTimer  # type: ignore
+from typing import Optional
+
+try:  # PySide6 primero (Nuke 16)
+    from PySide6 import QtWidgets, QtGui, QtCore
+    from PySide6.QtGui import QAction, QGuiApplication
+    from PySide6.QtCore import Qt, QTimer
+    from PySide6.QtWidgets import QApplication
+
     PYSIDE_VER = 6
-    print("LGA_OpenInNukeX: Using PySide6 (Qt6)")
-except ImportError:  # PySide2 (Nuke ≤15)
-    from PySide2 import QtWidgets, QtGui, QtCore  # type: ignore
-    from PySide2.QtWidgets import QApplication  # type: ignore
+except ImportError:  # PySide2 (Nuke 15)
+    from PySide2 import QtWidgets, QtGui, QtCore
+    from PySide2.QtCore import Qt, QTimer
+
     try:
-        from PySide2.QtGui import QAction  # type: ignore
+        from PySide2.QtGui import QAction  # Qt5 a veces lo expone aqui
     except ImportError:
-        from PySide2.QtWidgets import QAction  # type: ignore
-    from PySide2.QtGui import QGuiApplication  # type: ignore
-    from PySide2.QtCore import QTimer  # type: ignore
+        from PySide2.QtWidgets import QAction  # fallback QtWidgets
+    from PySide2.QtGui import QGuiApplication
+    from PySide2.QtWidgets import QApplication
+
     PYSIDE_VER = 2
-    print("LGA_OpenInNukeX: Using PySide2 (Qt5) - fallback")
 
-__all__ = ["QtWidgets", "QtGui", "QtCore", "QApplication", "QAction", "QGuiApplication", "QTimer", "PYSIDE_VER", "get_screen_geometry", "get_screen_at"]
 
-# Handle deprecated APIs
-def get_screen_geometry():
+def horizontal_advance(metrics: QtGui.QFontMetrics, text: str) -> int:
+    """
+    Ancho de texto compatible (Qt6 usa horizontalAdvance).
+    """
+    if hasattr(metrics, "horizontalAdvance"):
+        return metrics.horizontalAdvance(text)
+    return metrics.width(text)
+
+
+def primary_screen_geometry(pos: Optional[QtCore.QPoint] = None) -> QtCore.QRect:
+    """
+    Geometry del monitor principal o del monitor bajo pos.
+    """
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return QtCore.QRect(0, 0, 1920, 1080)
+
+    screen = None
+    if pos is not None and hasattr(QGuiApplication, "screenAt"):
+        screen = QGuiApplication.screenAt(pos)
+    if screen is None:
+        screen = QGuiApplication.primaryScreen()
+    geo = screen.availableGeometry() if screen else QtCore.QRect(0, 0, 1920, 1080)
+    return geo
+
+
+def set_layout_margin(layout: QtWidgets.QLayout, margin: int) -> None:
+    """
+    Establecer margen de layout compatible Qt5/Qt6.
+    En Qt6 usa setContentsMargins, en Qt5 usa setMargin.
+    """
+    if hasattr(layout, "setContentsMargins"):
+        layout.setContentsMargins(margin, margin, margin, margin)
+    else:
+        layout.setMargin(margin)
+
+
+def get_screen_geometry() -> QtCore.QRect:
     """Get screen geometry with Qt6/Qt5 compatibility"""
-    try:
-        # Qt6/PySide6 way
-        app = QApplication.instance()
-        if app:
-            screen = app.primaryScreen()
-            if screen:
-                return screen.availableGeometry()
-        # Fallback to primary screen
-        return QGuiApplication.primaryScreen().availableGeometry()
-    except:
-        # Qt5/PySide2 fallback - QDesktopWidget deprecated in Qt6
-        if PYSIDE_VER == 2:
-            from PySide2.QtWidgets import QDesktopWidget
-            desktop = QDesktopWidget()
-            return desktop.availableGeometry(desktop.primaryScreen())
-        else:
-            # Fallback for Qt6
-            return QGuiApplication.primaryScreen().availableGeometry()
+    app = QApplication.instance()
+    if app is None:
+        return QtCore.QRect(0, 0, 1920, 1080)
 
-def get_screen_at(pos):
+    screen = app.primaryScreen() if app else QGuiApplication.primaryScreen()
+    return screen.availableGeometry() if screen else QtCore.QRect(0, 0, 1920, 1080)
+
+
+def get_screen_at(pos: QtCore.QPoint) -> QtCore.QRect:
     """Get screen at position with Qt6/Qt5 compatibility"""
-    try:
-        # Qt6/PySide6 way
-        return QGuiApplication.screenAt(pos)
-    except:
-        # Qt5/PySide2 fallback - QDesktopWidget deprecated in Qt6
-        if PYSIDE_VER == 2:
-            from PySide2.QtWidgets import QDesktopWidget
-            desktop = QDesktopWidget()
-            return desktop.screenGeometry(pos)
-        else:
-            # Fallback for Qt6 - approximate with primary screen
-            screen = QGuiApplication.primaryScreen()
-            return screen.geometry()
+    if hasattr(QGuiApplication, "screenAt"):
+        screen = QGuiApplication.screenAt(pos)
+        return (
+            screen.geometry() if screen else QGuiApplication.primaryScreen().geometry()
+        )
+    else:
+        # Fallback for older versions - approximate with primary screen
+        return QGuiApplication.primaryScreen().geometry()
+
+
+__all__ = [
+    "QtWidgets",
+    "QtGui",
+    "QtCore",
+    "QAction",
+    "QGuiApplication",
+    "Qt",
+    "QApplication",
+    "QTimer",
+    "PYSIDE_VER",
+    "horizontal_advance",
+    "primary_screen_geometry",
+    "set_layout_margin",
+    "get_screen_geometry",
+    "get_screen_at",
+]
