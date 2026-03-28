@@ -83,27 +83,33 @@ if [ $? -ne 0 ]; then echo "❌ Error en compilación"; exit 1; fi
 
 cd ..
 
-# Crear estructura del bundle de distribución
-mkdir -p deploy/LGA_OpenInNukeX.app/Contents/{MacOS,Resources,Frameworks,PlugIns}
+APP_BUNDLE_BUILD="build/LGA_OpenInNukeX.app"
+APP_BUNDLE_DEPLOY="deploy/LGA_OpenInNukeX.app"
 
-cp build/LGA_OpenInNukeX.app/Contents/MacOS/LGA_OpenInNukeX \
-   deploy/LGA_OpenInNukeX.app/Contents/MacOS/
+if [ ! -d "$APP_BUNDLE_BUILD" ]; then
+    echo "❌ No se encontro la app compilada en $APP_BUNDLE_BUILD"
+    exit 1
+fi
 
-# Icono
+mkdir -p deploy
+
+echo "📦 Copiando bundle base desde build/..."
+cp -R "$APP_BUNDLE_BUILD" "$APP_BUNDLE_DEPLOY"
+
+# Refrescar recursos propios por si fueron modificados despues del build
 cp resources/LGA_OpenInNukeX.icns \
-   deploy/LGA_OpenInNukeX.app/Contents/Resources/
+   "$APP_BUNDLE_DEPLOY/Contents/Resources/"
 
-# QSS (necesario para la UI)
 cp dark_theme.qss \
-   deploy/LGA_OpenInNukeX.app/Contents/Resources/
+   "$APP_BUNDLE_DEPLOY/Contents/Resources/"
 
 # macdeployqt para incluir Qt frameworks
 echo "📦 Ejecutando macdeployqt en deploy bundle..."
-"$QT_PATH/bin/macdeployqt" deploy/LGA_OpenInNukeX.app 2>/dev/null || \
+"$QT_PATH/bin/macdeployqt" "$APP_BUNDLE_DEPLOY" 2>/dev/null || \
     echo "Advertencia: macdeployqt falló, copiando plugins manualmente..."
 
 # Fallback plugins
-PDEPLOY="deploy/LGA_OpenInNukeX.app/Contents/PlugIns"
+PDEPLOY="$APP_BUNDLE_DEPLOY/Contents/PlugIns"
 mkdir -p "$PDEPLOY/platforms" "$PDEPLOY/styles" "$PDEPLOY/imageformats"
 
 for DYLIB in \
