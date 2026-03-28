@@ -21,6 +21,7 @@ public:
 
 private slots:
     void onConnected();
+    void onResponseReceived();       // async: handles server response via readyRead
     void onErrorOccurred(QAbstractSocket::SocketError error);
     void onSocketTimeout();
     void updateCountdownMessage();

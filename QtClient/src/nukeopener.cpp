@@ -131,16 +131,23 @@ void NukeOpener::sendToNuke(const QString &filepath, const QString &host, int po
     Logger::logInfo(QString("=== INICIANDO sendToNuke ==="));
     Logger::logInfo(QString("Archivo a abrir: %1").arg(filepath));
     Logger::logInfo(QString("Host: %1, Puerto: %2").arg(host).arg(port));
-    
+
+    // Guard: ignorar llamadas mientras ya hay un socket activo
+    // (evita crash por segundo QFileOpenEvent durante waitForReadyRead)
+    if (socket) {
+        Logger::logInfo("sendToNuke: socket ya activo, ignorando llamada duplicada");
+        return;
+    }
+
     currentFilepath = filepath;
-    
+
     // Verificar que el archivo existe
     if (!QFile::exists(filepath)) {
         Logger::logError(QString("El archivo no existe: %1").arg(filepath));
         showMessage(QString("Error: El archivo no existe: %1").arg(filepath));
         return;
     }
-    
+
     // Crear socket
     Logger::logInfo("Creando socket TCP...");
     socket = new QTcpSocket(this);
@@ -163,34 +170,48 @@ void NukeOpener::onConnected()
 {
     Logger::logInfo("¡Conectado al servidor TCP!");
     timeoutTimer->stop();
-    
+
     // Normalizar la ruta del archivo (convertir \ a /)
     QString normalizedPath = QDir::fromNativeSeparators(currentFilepath);
     QString fullCommand = QString("run_script||%1").arg(normalizedPath);
-    
+
     Logger::logInfo(QString("Enviando comando: %1").arg(fullCommand));
-    
     socket->write(fullCommand.toUtf8());
-    socket->waitForBytesWritten();
-    
-    Logger::logInfo("Comando enviado, esperando respuesta...");
-    
-    // Leer respuesta
-    socket->waitForReadyRead(5000);
+    // NO usar waitForBytesWritten() ni waitForReadyRead() — crean event loops
+    // anidados que permiten procesar otros eventos (como un segundo QFileOpenEvent)
+    // y corrompen el puntero socket. Usamos async puro via readyRead.
+
+    connect(socket, &QIODevice::readyRead, this, &NukeOpener::onResponseReceived);
+
+    // Timeout de 5s para recibir respuesta
+    QTimer::singleShot(5000, this, [this]() {
+        if (socket) {
+            Logger::logInfo("Timeout esperando respuesta del servidor, cerrando");
+            socket->close();
+            socket->deleteLater();
+            socket = nullptr;
+            QApplication::quit();
+        }
+    });
+
+    Logger::logInfo("Comando enviado, esperando respuesta async...");
+}
+
+void NukeOpener::onResponseReceived()
+{
+    if (!socket) {
+        Logger::logError("onResponseReceived: socket es nullptr");
+        return;
+    }
+
     QByteArray response = socket->readAll();
-    
     Logger::logInfo(QString("Respuesta recibida: %1").arg(QString::fromUtf8(response)));
-    
-    // Comentado para que no muestre el mensaje de respuesta como en el Python original
-    // showMessage(QString("Recibido: %1").arg(QString::fromUtf8(response)));
-    
+
     socket->close();
     socket->deleteLater();
     socket = nullptr;
-    
+
     Logger::logInfo("Conexión cerrada exitosamente. Cerrando aplicación.");
-    
-    // Cerrar la aplicación después de enviar el comando
     QApplication::quit();
 }
 

@@ -1,206 +1,144 @@
 > **Regla de documentacion**: este archivo describe el estado actual del codigo. No es un historial de cambios, changelog ni bitacora temporal.
 > **Regla de documentacion**: este archivo debe incluir una seccion de referencias tecnicas con rutas completas a los archivos mas importantes relacionados, y para cada archivo nombrar las funciones, clases o metodos clave vinculados a este tema.
 
-# LGA_OpenInNukeX v1.54
+# LGA_OpenInNukeX — Qt Client
 
-Cliente Qt/C++ para abrir archivos .nk en NukeX, reemplazando el ejecutable Python para evitar falsos positivos de antivirus.
+Cliente Qt/C++ multiplataforma para abrir archivos .nk en NukeX. Disponible para **Windows 10/11** y **macOS 12+**.
 
 ## Características
 
-- **Sin ventana de consola**: Ejecutable configurado como aplicación Windows pura
-- **Asociación de archivos profesional**: Botón Apply con actualización inmediata del explorador usando SHChangeNotify
-- **Configuración en AppData**: Archivos de configuración y logs se guardan en `%AppData%\LGA\OpenInNukeX`
-- **Conexión TCP**: Conecta a instancia de NukeX en puerto 54325 con timeout de 10 segundos
-- **Fallback automático**: Si no hay conexión TCP, lanza nueva instancia de NukeX
-- **Interfaz de configuración moderna**: Ventana con botones Apply y Save, fondo #161616
-- **Sistema de logging**: Logs detallados guardados automáticamente en AppData
-- **Instalador portable**: Scripts de instalación/desinstalación incluidos
-- **Estructura organizada**: Código fuente en `src/`, recursos en `resources/`, scripts en `scripts/`
-- **Actualización visual inmediata**: Cambios de iconos y asociaciones visibles al instante en el explorador
+- **Multiplataforma**: mismo codebase para Windows y macOS con `#ifdef Q_OS_WIN` guards
+- **Sin ventana de consola**: aplicación GUI pura en ambas plataformas
+- **Apertura inteligente**: si NukeX está corriendo envía el archivo vía TCP; si no, lanza nueva instancia
+- **Asociación de archivos**: Windows usa registro (`HKCU`) + SetUserFTA opcional; macOS usa `lsregister` + `duti` opcional
+- **Configuración en AppData/Application Support**: archivos de configuración y logs en ubicación estándar del sistema
+- **Conexión TCP async**: conecta al servidor NukeX en puerto 54325 con timeout; sin bloqueos (`readyRead` signal)
+- **Fallback automático**: si no hay instancia activa de NukeX, lanza el ejecutable configurado con `--nukex`
+- **Interfaz moderna oscura**: tema QSS con fondo #161616
+- **Sistema de logging**: logs detallados guardados en AppData/Application Support
 
 ## Estructura del Proyecto
 
 ```
 QtClient/
-├── src/                           # Código fuente
-│   ├── main.cpp                   # Punto de entrada principal
-│   ├── nukeopener.h/cpp          # Lógica de conexión TCP y NukeX
-│   ├── configwindow.h/cpp        # Ventana de configuración con botón Apply mejorado
-│   └── logger.h/cpp              # Sistema de logging
-├── resources/                     # Recursos de la aplicación
-│   ├── LGA_NukeShortcuts.ico     # Icono principal de la aplicación
-│   ├── LGA_NukeShortcuts.png     # Icono principal en formato PNG
-│   ├── app_icon.ico              # Icono para archivos .nk asociados
-│   ├── app_icon.png              # Icono para archivos .nk en formato PNG
-│   └── app.rc                    # Archivo de recursos Windows
-├── scripts/                       # Scripts de compilación e instalación
-│   ├── compilar.bat              # Compilación para desarrollo
-│   ├── deploy.bat                # Compilación y deploy para producción
-│   ├── limpiar.bat               # Limpieza de archivos de compilación
-│   ├── test_debug.bat            # Script de testing
-│   └── instalador.bat            # Generador de instalador .exe (Inno Setup)
-├── build/                         # Directorio de compilación (generado)
-├── release/                       # Directorio de release (generado)
-├── CMakeLists.txt                # Configuración CMake con librerías Windows
-└── README_Qt.md                  # Esta documentación
+├── src/
+│   ├── main.cpp                 # NukeApp (captura QFileOpenEvent en macOS), main()
+│   ├── nukeopener.h/cpp         # TCP client, lanzamiento de NukeX
+│   ├── configwindow.h/cpp       # Ventana de configuración (Win + Mac)
+│   ├── nukescanner.h/cpp        # Detección automática de versiones Nuke
+│   └── logger.h/cpp             # Sistema de logging
+├── resources/
+│   ├── LGA_NukeShortcuts.ico    # Icono app (Windows)
+│   ├── LGA_NukeShortcuts.png    # Icono fuente
+│   ├── LGA_OpenInNukeX.icns     # Icono app (macOS)
+│   ├── app_icon.ico             # Icono para archivos .nk (Windows)
+│   ├── app_icon.png             # Icono fuente
+│   ├── app.rc                   # Recursos Windows (icono, versión)
+│   └── dark_theme.qss           # Tema oscuro
+├── cmake/
+│   └── Info.plist.in            # Bundle macOS (CFBundleDocumentTypes, UTI .nk)
+├── scripts/                     # Scripts Windows (.bat)
+│   ├── compilar.bat
+│   ├── deploy.bat
+│   ├── limpiar.bat
+│   └── instalador.bat
+├── compilar.sh                  # Build macOS (macdeployqt)
+├── compilar_dev.sh              # Build dev macOS (Debug, rápido)
+├── deploy.sh                    # Release macOS
+├── limpiar.sh                   # Limpieza de build
+└── CMakeLists.txt               # Configuración CMake multiplataforma
 ```
 
 ## Uso
 
-### Con archivo de script
+### Con archivo (modo cliente — abre el .nk)
 ```bash
+# Windows
 LGA_OpenInNukeX.exe "ruta/al/archivo.nk"
+
+# macOS (terminal)
+LGA_OpenInNukeX.app/Contents/MacOS/LGA_OpenInNukeX "ruta/al/archivo.nk"
+
+# macOS (Finder) — automático vía QFileOpenEvent / Apple Events
 ```
 
-### Sin argumentos (configuración)
-```bash
-LGA_OpenInNukeX.exe
-```
-Abre ventana de configuración con:
-- Texto descriptivo: "Use this app to open .nk files in your preferred NukeX version"
-- **Botón APPLY**: Asocia automáticamente archivos .nk con actualización inmediata del explorador
-- Campo de ruta para seleccionar NukeX.exe
-- **Botón SAVE**: Guarda la configuración de ruta de NukeX
-
-## Instalación
-
-### Generar Instalador .exe
-```bash
-cd QtClient/scripts
-instalador.bat
-```
-
-**Características del instalador generado:**
-- **Instalador .exe profesional** usando Inno Setup
-- Instala en `C:\Portable\LGA\OpenInNukeX` por defecto
-- **Descarga automática** de Inno Setup si no está instalado
-- **Icono personalizado** (LGA_NukeShortcuts) para la aplicación
-- **Asociación de archivos** .nk con icono específico (app_icon)
-- **Acceso directo activado por defecto** en escritorio y menú inicio
-- Opciones durante instalación:
-  - Crear accesos directos (activado por defecto)
-  - Asociar archivos .nk automáticamente
-- **Desinstalador integrado** en Panel de Control
-- **Sin falsos positivos** de antivirus
-- **Aplicación totalmente portable** - no requiere PATH del sistema
-
-### Instalador generado: `LGA_OpenInNukeX_v1.54_Setup.exe`
-- Tamaño compacto con compresión LZMA
-- Interfaz moderna en español/inglés
-- Verificación de integridad de archivos
-- Limpieza completa al desinstalar
+### Sin argumentos (modo configuración)
+Abre la ventana de configuración con:
+- Botón **APPLY**: asocia archivos .nk con esta app
+- Campo de ruta + **BROWSE** + **SAVE**: configura el ejecutable de NukeX
 
 ## Compilación
 
-### Limpieza de archivos
-```bash
+### Windows
+
+Requiere Qt 6.x con MinGW y CMake.
+
+```bat
 cd scripts
-limpiar.bat
+compilar.bat    # Debug
+deploy.bat      # Release + deploy portable
+instalador.bat  # Genera instalador .exe con Inno Setup
 ```
 
-### Desarrollo (Debug)
+### macOS
+
+Requiere Qt 6.5.3 (x86_64). En Apple Silicon se ejecuta via Rosetta (los scripts lo manejan automáticamente).
+
 ```bash
-cd scripts
-compilar.bat
+./limpiar.sh        # Limpia build/
+./compilar_dev.sh   # Debug rápido, copia plugins Qt mínimos, lanza la app
+./compilar.sh       # Debug con macdeployqt completo
+./deploy.sh         # Release, genera .app distribuible
 ```
 
-### Producción (Release + Deploy)
-```bash
-cd scripts
-deploy.bat
-```
-
-### Instalación completa
-```bash
-cd QtClient/scripts
-deploy.bat
-instalador.bat
-```
+Los scripts crean un AGL.framework dummy (necesario para linkar Qt 6.x en macOS 12+ donde AGL fue removido).
 
 ## Asociación de Archivos
 
-### Método automático (recomendado)
-1. Ejecuta `LGA_OpenInNukeX.exe` sin argumentos
-2. Haz clic en el botón **APPLY**
-3. Confirma la asociación en el diálogo
-4. **Los cambios son inmediatos** - verás el "flash" visual en el explorador
-5. Los archivos .nk ahora muestran el icono personalizado y se abren automáticamente
+### Windows
+- Registra ProgID `LGA.NukeScript.1` en `HKCU\Software\Classes`
+- Usa SetUserFTA si está disponible (evita UserChoice Protection de Windows 10/11)
+- Fallback a PowerShell/reg si SetUserFTA no está presente
+- Llama `SHChangeNotify()` para actualizar el explorador inmediatamente
 
-### Implementación técnica mejorada
-La aplicación ahora usa las mejores prácticas de Windows para asociaciones:
-- **Registros múltiples**: ProgID, extensión, OpenWithProgids, Applications
-- **SHChangeNotify**: Actualización inmediata del explorador sin reiniciar
-- **Iconos personalizados**: Integración completa con el sistema de archivos
-- **UserChoice**: Configuración como aplicación por defecto para .nk
+### macOS
+- Registra el .app bundle con Launch Services: `lsregister -f LGA_OpenInNukeX.app`
+- Usa `duti` para establecer handler predeterminado: `duti -s com.lga.openinnukex .nk all`
+- Si `duti` no está instalado (Homebrew), muestra instrucciones para configurar manualmente en Finder
 
-## Requisitos
+## Detección de Versiones Nuke (NukeScanner)
 
-- Qt 6.8.2 con MinGW 13.1.0
-- CMake 3.16+
-- Windows 10/11
-- Permisos de administrador (solo para instalación y asociaciones de archivos)
+### Windows
+Escanea `C:/Program Files` y `C:/Program Files (x86)` buscando directorios `*Nuke*` con ejecutables `.exe`.
 
-## Archivos Principales
-
-- `src/main.cpp`: Punto de entrada, configuración QStandardPaths
-- `src/nukeopener.h/cpp`: Lógica de conexión TCP y lanzamiento de NukeX
-- `src/configwindow.h/cpp`: Ventana con botones Apply/Save, asociación mejorada
-- `src/logger.h/cpp`: Sistema de logging en AppData
-- `scripts/instalador.bat`: Generador de instalador .exe con Inno Setup
-- `installer.iss`: Script de Inno Setup para el instalador profesional (sin PATH)
-- `resources/app.rc`: Configuración de iconos y versión de la aplicación
+### macOS
+Escanea `/Applications` buscando bundles `Nuke*.app` (directos o en subdirectorio). Extrae el binario de `Contents/MacOS/`. Filtra `.dylib`, `.so`, `.framework` y herramientas auxiliares.
 
 ## Configuración y Datos
 
-### Ubicación de archivos
-- **Instalación**: `C:\Users\[Usuario]\AppData\Local\Programs\LGA\OpenInNukeX\` (o personalizada)
-- **Configuración**: `%AppData%\LGA\OpenInNukeX\nukeXpath.txt`
-- **Logs**: `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`
-- **Acceso directo**: `%USERPROFILE%\Desktop\LGA OpenInNukeX.lnk` (opcional)
+| Plataforma | Configuración | Logs |
+|---|---|---|
+| Windows | `%AppData%\LGA\OpenInNukeX\nukeXpath.txt` | `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log` |
+| macOS | `~/Library/Application Support/LGA/OpenInNukeX/nukeXpath.txt` | `~/Library/Application Support/LGA/OpenInNukeX/OpenInNukeX.log` |
 
-### Registro de Windows (asociaciones mejoradas)
-- **Extensión**: `HKEY_CLASSES_ROOT\.nk`
-- **Programa**: `HKEY_CLASSES_ROOT\LGA.NukeScript`
-- **OpenWithProgids**: Para integración "Abrir con..."
-- **Applications**: Para registro de aplicación
-- **UserChoice**: Para configuración por defecto
-- **Comando**: `shell/open/command`
-- **Icono**: `DefaultIcon` (si existe app_icon.ico)
+Los logs se borran al iniciar la app.
 
-### Estructura de Despliegue
+## Requisitos
 
-```
-C:\Portable\LGA\OpenInNukeX\
-├── LGA_OpenInNukeX.exe           # Ejecutable principal
-├── Qt6*.dll                      # Librerías Qt necesarias
-├── platforms/                    # Plugins de plataforma Qt
-├── styles/                       # Plugins de estilos Qt
-├── app_icon.ico                  # Icono para asociaciones
-└── ...                           # Otras dependencias Qt
-```
+| | Windows | macOS |
+|---|---|---|
+| Qt | 6.x + MinGW | 6.5.3 (x86_64) |
+| CMake | 3.16+ | 3.16+ |
+| OS | Windows 10/11 | macOS 12+ |
+| Extras | Inno Setup (instalador, opcional) | Homebrew duti (opcional) |
 
-## Configuración de Iconos
+## Referencias Técnicas
 
-### Iconos de la aplicación
-- **LGA_NukeShortcuts.ico/.png**: Icono principal que aparece en:
-  - Ejecutable de la aplicación
-  - Ventana de configuración
-  - Accesos directos
-  - Lista de programas del sistema
-
-### Iconos de archivos asociados
-- **app_icon.ico/.png**: Icono que aparece en:
-  - Archivos .nk en el explorador de Windows
-  - Lista "Abrir con..." del menú contextual
-  - Asociaciones de archivos del sistema
-
-## Características de Seguridad
-
-- **Sin falsos positivos**: Cliente nativo Qt en lugar de Python
-- **Instalador sin privilegios**: Uso de Inno Setup con permisos mínimos del usuario
-- **Sin permisos de administrador**: Toda la funcionalidad funciona con permisos de usuario estándar
-- **Asociaciones de archivos por usuario**: Usa `HKEY_CURRENT_USER` y SetUserFTA para asociaciones sin permisos elevados
-- **Limpieza completa**: Desinstalador integrado remueve todas las trazas del sistema
-- **Verificación de integridad**: El instalador valida archivos antes de proceder
-- **Distribución segura**: Un solo archivo .exe firmado digitalmente (opcional)
-- **Aplicación portable**: No modifica PATH del sistema ni variables de entorno 
+| Archivo | Funciones / Clases clave |
+|---------|--------------------------|
+| `src/main.cpp` | `NukeApp` (subclase QApplication), `NukeApp::event()` (QFileOpenEvent), `main()` |
+| `src/nukeopener.h/cpp` | `sendToNuke()`, `onConnected()`, `onResponseReceived()`, `openNukeWithFile()`, `onSocketTimeout()`, `showAutoCloseMessage()` |
+| `src/configwindow.h/cpp` | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()`, `browseNukePath()`, `resolveNukeBinaryFromBundle()`, `getAppBundlePath()`, `loadStyleSheet()` |
+| `src/nukescanner.h/cpp` | `getCommonNukePaths()`, `scanDirectory()`, `isValidNukeExecutable()`, `isValidNukeAppBundle()`, `parseNukeExecutable()` |
+| `CMakeLists.txt` | Targets Win/Mac, `MACOSX_BUNDLE`, deployment target 12.0, Info.plist, icns, AGL dummy |
+| `cmake/Info.plist.in` | `CFBundleDocumentTypes` (.nk), `UTExportedTypeDeclarations` (com.foundry.nuke.script), bundle ID |

@@ -1,245 +1,178 @@
 > **Regla de documentacion**: este archivo describe el estado actual del codigo. No es un historial de cambios, changelog ni bitacora temporal.
 > **Regla de documentacion**: este archivo debe incluir una seccion de referencias tecnicas con rutas completas a los archivos mas importantes relacionados, y para cada archivo nombrar las funciones, clases o metodos clave vinculados a este tema.
 
-# LGA_OpenInNukeX v1.54
+# LGA_OpenInNukeX
 
-**Una aplicación portable en Qt/C++ para abrir archivos .nk directamente en NukeX desde el explorador de archivos de Windows.**
+**Aplicación Qt/C++ multiplataforma para abrir archivos .nk directamente en NukeX desde el explorador de archivos — Windows y macOS.**
 
-## ✨ Características Principales
+## Características Principales
 
-- **🚀 Aplicación portable**: No requiere instalación, funciona desde cualquier ubicación
-- **🔗 Asociación de archivos**: Establece LGA_OpenInNukeX como aplicación predeterminada para archivos .nk
-- **⚡ Apertura directa**: Doble clic en archivos .nk los abre automáticamente en NukeX
-- **🛠️ Configuración visual**: Interfaz gráfica para configurar la ruta de NukeX
-- **📝 Logging detallado**: Registro completo de operaciones para debugging
-- **🔒 Seguro**: Evita falsos positivos de antivirus (reemplaza ejecutable Python)
+- **Aplicación multiplataforma**: Windows 10/11 y macOS 12+
+- **Asociación de archivos**: Establece LGA_OpenInNukeX como aplicación predeterminada para archivos .nk
+- **Apertura directa**: Doble clic en archivos .nk los abre en NukeX automáticamente
+- **Inteligente**: Si NukeX ya está abierto, envía el archivo vía TCP. Si no, lanza una nueva instancia
+- **Configuración visual**: Interfaz gráfica para configurar la ruta de NukeX
+- **Logging detallado**: Registro completo de operaciones para debugging
+- **Sin falsos positivos**: Ejecutable nativo Qt en lugar de Python
 
-## 🆕 Asociación de Archivos Robusta
+## Lógica de Apertura
 
-### ✅ Método Híbrido Implementado
+Cuando se hace doble clic en un archivo `.nk`:
 
-La aplicación utiliza un **método híbrido robusto** que combina múltiples técnicas para garantizar que las asociaciones de archivos .nk funcionen correctamente:
+1. **Si NukeX está abierto**: El archivo se envía a la instancia activa vía TCP (puerto 54325)
+2. **Si NukeX no está abierto**: Se lanza el ejecutable configurado con `--nukex` y el archivo como argumento
 
-**Implementación técnica**:
-- **Limpieza inteligente del registro**: Elimina asociaciones conflictivas previas usando comandos `reg delete`
-- **Registro de ProgID**: Crea el identificador `LGA.NukeScript.1` con comando de apertura y icono
-- **SetUserFTA como preferencia**: Si está disponible, utiliza SetUserFTA para asociaciones más robustas
-- **Fallback a PowerShell/reg**: Si SetUserFTA no está disponible, usa comandos directos del registro
-- **Notificación al sistema**: Actualiza el explorador de archivos automáticamente
+## Requisitos del Sistema
 
-**Archivos clave**:
-- `QtClient/src/configwindow.cpp`: Funciones `applyFileAssociation()`, `cleanRegistry()`, `registerProgId()`, `setFileAssociation()`
-- `QtClient/src/logger.cpp`: Sistema de logging detallado para debugging
+| | Windows | macOS |
+|---|---|---|
+| OS | Windows 10/11 (x64) | macOS 12+ (Intel o Apple Silicon via Rosetta) |
+| NukeX | Cualquier versión instalada | Cualquier versión instalada |
+| Permisos | Usuario estándar (no requiere admin) | Usuario estándar |
+| Dependencias | SetUserFTA.exe (opcional) | duti via Homebrew (opcional) |
 
-### 🔧 SetUserFTA Integration (Opcional)
+## Instalación y Uso
 
-SetUserFTA es una herramienta opcional desarrollada por Christoph Kolbicz que mejora la robustez de las asociaciones:
-- **Implementa el algoritmo hash correcto** para UserChoice en Windows 10/11
-- **Evita la detección de "hijacking"** por parte de Windows
-- **Funciona sin permisos de administrador**
+### Windows
 
-**Integración automática**: Si `SetUserFTA.exe` está presente en el directorio de la aplicación, se usa automáticamente. Si no está disponible, la aplicación funciona perfectamente con el método de fallback.
+#### Opción 1: Instalador
+1. Ejecutar `LGA_OpenInNukeX_Installer.exe` (instala en `C:/Program Files/LGA/LGA_OpenInNukeX`)
+2. Configurar la ruta de NukeX en la primera ejecución
 
-## 📋 Requisitos del Sistema
+#### Opción 2: Portable
+1. Extraer en cualquier ubicación
+2. Ejecutar `LGA_OpenInNukeX.exe`
+3. Configurar ruta de NukeX y aplicar asociación
 
-- **Sistema Operativo**: Windows 10/11 (x64)
-- **NukeX**: Cualquier versión instalada
-- **Permisos**: Usuario estándar (no requiere administrador)
-- **Dependencias**: Ninguna (SetUserFTA.exe es opcional)
+### macOS
 
-## 🚀 Instalación y Uso
+1. Copiar `LGA_OpenInNukeX.app` a `/Applications` o cualquier ubicación
+2. Abrir la app (sin argumentos muestra la ventana de configuración)
+3. Configurar la ruta del binario de Nuke, por ejemplo:
+   ```
+   /Applications/Nuke16.0v8/Nuke16.0v8.app/Contents/MacOS/Nuke16.0
+   ```
+4. Hacer clic en **APPLY** para registrar la asociación de archivos .nk
 
-### Opción 1: Usar el Instalador (Recomendado)
+## Configuración
 
-1. **Descargar** el instalador desde las releases
-2. **Ejecutar** `LGA_OpenInNukeX_Installer.exe`
-3. **Seguir** el asistente de instalación
-4. **Configurar** la ruta de NukeX en la primera ejecución
+### Ventana de Configuración
 
-### Opción 2: Uso Portable
+Se muestra al ejecutar la app sin argumentos:
 
-1. **Descargar** el archivo portable desde las releases
-2. **Extraer** en cualquier ubicación
-3. **Ejecutar** `LGA_OpenInNukeX.exe`
-4. **Configurar** la ruta de NukeX
-5. **Aplicar** asociación de archivos
+- **Sección File Association**: Botón **APPLY** para establecer .nk como asociación predeterminada
+- **Sección Preferred Nuke Version**: Campo de ruta + botón **BROWSE** + botón **SAVE**
 
-## ⚙️ Configuración
+En macOS, **BROWSE** navega a `/Applications` y permite seleccionar el binario dentro del `.app` bundle. Si se selecciona el `.app` directamente, la app resuelve automáticamente el binario dentro de `Contents/MacOS/`.
 
-### Primera Ejecución
+### Archivos de Configuración
 
-1. La aplicación abrirá automáticamente la ventana de configuración con una **interfaz moderna y oscura**
-2. **Sección File Association**:
-   - Texto descriptivo sobre la funcionalidad
-   - Botón "APPLY" para establecer la asociación de archivos .nk
-   
-3. **Sección Preferred Nuke Version**:
-   - Campo de entrada para la ruta de NukeX
-   - Botón "BROWSE" para seleccionar el ejecutable
-   - Botón "SAVE" para guardar la configuración
+| Plataforma | Ruta |
+|---|---|
+| Windows | `%AppData%\LGA\OpenInNukeX\nukeXpath.txt` |
+| macOS | `~/Library/Application Support/LGA/OpenInNukeX/nukeXpath.txt` |
 
-### Interfaz de Usuario
+### Logs
 
-La aplicación ahora cuenta con:
-- **Tema oscuro moderno** con tipografía Inter
-- **Diseño responsive** con scroll automático
-- **Dos secciones principales** organizadas en tarjetas
-- **Colores consistentes** con el ecosistema de aplicaciones LGA
+| Plataforma | Ruta |
+|---|---|
+| Windows | `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log` |
+| macOS | `~/Library/Application Support/LGA/OpenInNukeX/OpenInNukeX.log` |
 
-### Verificación
+Los logs se borran al iniciar la aplicación. Niveles: `INFO`, `WARNING`, `ERROR`.
 
-Después de la configuración:
-- Los archivos `.nk` mostrarán el icono de LGA_OpenInNukeX
-- Doble clic en un `.nk` abrirá NukeX automáticamente
-- La asociación funciona de forma confiable en Windows 10/11
+## Asociación de Archivos
 
-## 🔧 Desarrollo y Compilación
+### Windows
+Usa el registro de Windows (`HKEY_CURRENT_USER`):
+- Registra el ProgID `LGA.NukeScript.1`
+- Usa SetUserFTA si está disponible (más robusto), fallback a PowerShell/reg
+- Notifica al explorador vía `SHChangeNotify()`
 
-### Estructura del Proyecto
+### macOS
+- Registra la app con Launch Services vía `lsregister`
+- Usa `duti` (Homebrew) para establecer la app como handler predeterminado de `.nk`
+- Si `duti` no está instalado, muestra instrucciones para configurar manualmente: clic derecho en un `.nk` → Obtener información → Abrir con → Cambiar todo
+
+## Estructura del Proyecto
 
 ```
 LGA_OpenInNukeX/
-├── QtClient/                 # Aplicación Qt/C++
-│   ├── src/                 # Código fuente
-│   │   ├── main.cpp         # Punto de entrada
-│   │   ├── nukeopener.cpp   # Lógica principal
-│   │   ├── configwindow.cpp # Ventana de configuración moderna
-│   │   └── logger.cpp       # Sistema de logging
-│   ├── resources/           # Recursos (iconos)
-│   ├── dark_theme.qss       # Tema oscuro moderno
-│   ├── scripts/            # Scripts de build
-│   │   ├── compilar.bat    # Compilación
-│   │   ├── deploy.bat      # Deploy portable (incluye QSS)
-│   │   └── instalador.bat  # Crear instalador
-│   └── CMakeLists.txt      # Configuración CMake
-├── Developement/           # Versión Python original
-└── init.py                # Configuración inicial
+├── QtClient/
+│   ├── src/
+│   │   ├── main.cpp              # NukeApp (QFileOpenEvent), lógica de inicio
+│   │   ├── nukeopener.h/cpp      # TCP client, lanzamiento de NukeX
+│   │   ├── configwindow.h/cpp    # Ventana de configuración (Win + Mac)
+│   │   ├── nukescanner.h/cpp     # Detección automática de versiones Nuke
+│   │   └── logger.h/cpp          # Sistema de logging
+│   ├── resources/
+│   │   ├── LGA_NukeShortcuts.ico/.png   # Icono de la app
+│   │   ├── LGA_OpenInNukeX.icns         # Icono macOS
+│   │   ├── app_icon.ico/.png            # Icono para archivos .nk (Windows)
+│   │   ├── app.rc                       # Recursos Windows
+│   │   └── dark_theme.qss               # Tema oscuro
+│   ├── cmake/
+│   │   └── Info.plist.in         # Bundle macOS (CFBundleDocumentTypes, UTI)
+│   ├── scripts/                  # Scripts Windows (.bat)
+│   ├── compilar.sh               # Build macOS (con macdeployqt)
+│   ├── compilar_dev.sh           # Build dev macOS (rápido, Debug)
+│   ├── deploy.sh                 # Release macOS
+│   ├── limpiar.sh                # Limpieza de build
+│   └── CMakeLists.txt            # Configuración CMake multiplataforma
+├── init.py                       # Servidor TCP para NukeX (.nuke/)
+└── LGA_OpenInNukeX.md            # Esta documentación
 ```
 
-### Compilar desde Código Fuente
+## Compilación
 
-#### Requisitos de Desarrollo
+### Windows
 
-- **Qt 6.8.2** con MinGW 13.1.0
-- **CMake 3.25+**
-- **Git** para clonar el repositorio
+Requiere Qt 6.x con MinGW y CMake.
 
-#### Pasos de Compilación
+```bat
+cd QtClient/scripts
+deploy.bat
+```
+
+### macOS
+
+Requiere Qt 6.5.3 instalado (probado con Qt 6.5.3 para x86_64).
 
 ```bash
-# 1. Clonar repositorio
-git clone <repository-url>
-cd LGA_OpenInNukeX/QtClient
-
-# 2. Compilar aplicación
-cd scripts
-deploy.bat
-
-# 3. Crear instalador (opcional)
-instalador.bat
+cd QtClient
+./compilar_dev.sh   # Build rápido para desarrollo
+./compilar.sh       # Build con macdeployqt
+./deploy.sh         # Release (genera .app distribuible)
 ```
 
-### Scripts de Build
+## Resolución de Problemas
 
-- **`deploy.bat`**: Compila la aplicación en modo Release + crea paquete portable
-- **`instalador.bat`**: Genera instalador con Inno Setup
-- **`limpiar.bat`**: Limpia archivos de compilación
+### "Asociación no funciona" (Windows)
+1. Usar botón **APPLY** (limpia conflictos automáticamente)
+2. Verificar logs en `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`
+3. Asegurarse de que la ruta de NukeX sea correcta
 
-## 📁 Archivos Importantes
+### "Asociación no funciona" (macOS)
+1. Instalar `duti`: `brew install duti`
+2. Volver a hacer clic en **APPLY**
+3. Alternativa manual: clic derecho en `.nk` → Obtener información → Abrir con → Cambiar todo
 
-### Ejecutables
-- **`LGA_OpenInNukeX.exe`**: Aplicación principal
-- **`SetUserFTA.exe`**: Herramienta opcional para asociaciones más robustas
+### "Error al abrir NukeX"
+Verificar que la ruta configurada apunta al binario correcto:
+- **Windows**: `C:\Program Files\Nuke16.0v8\Nuke16.0.exe`
+- **macOS**: `/Applications/Nuke16.0v8/Nuke16.0v8.app/Contents/MacOS/Nuke16.0`
 
-### Configuración
-- **`nukeXpath.txt`**: Ruta de NukeX configurada
-- **`app_icon.ico`**: Icono para asociaciones de archivos
-- **`dark_theme.qss`**: Archivo de estilo para la interfaz moderna
+### "SetUserFTA.exe no encontrado" (Windows — mensaje informativo)
+No es un error. La app funciona con el método fallback. Para mayor robustez, descargar SetUserFTA y colocarlo junto al ejecutable.
 
-### Logs
-- **`%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`**: Logs detallados (se borra al iniciar la app)
+## Referencias Técnicas
 
-## 🔍 Resolución de Problemas
-
-### Problema: "Asociación no funciona"
-
-**Causas posibles**: 
-- Conflictos en el registro de asociaciones previas
-- Ruta de NukeX incorrecta
-
-**Solución**:
-1. **Re-aplicar la asociación**: Usar el botón "APPLY" en la ventana de configuración (esto limpia conflictos automáticamente)
-2. **Verificar logs**: Revisar `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log` para errores específicos
-3. **Verificar ruta de NukeX**: Asegurar que la ruta configurada sea correcta y el archivo exista
-4. **Reiniciar Explorer**: Si persiste, ejecutar `taskkill /f /im explorer.exe ; start explorer.exe`
-
-### Problema: "SetUserFTA.exe no encontrado" (Mensaje informativo)
-
-**Explicación**: Este es un mensaje informativo, no un error. La aplicación funciona perfectamente sin SetUserFTA.
-
-**Para usar SetUserFTA (opcional)**:
-1. Descargar SetUserFTA.exe desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-2. Colocar `SetUserFTA.exe` en el mismo directorio que `LGA_OpenInNukeX.exe`
-3. Re-aplicar la asociación usando el botón "APPLY"
-
-### Problema: "Error al abrir NukeX"
-
-**Causa**: Ruta de NukeX incorrecta o archivo no encontrado.
-
-**Solución**:
-1. Abrir ventana de configuración
-2. Verificar/actualizar ruta de NukeX
-3. Guardar configuración
-
-## 📚 Documentación Técnica
-
-### Algoritmo de Asociación de Archivos
-
-La función `applyFileAssociation()` en `QtClient/src/configwindow.cpp` ejecuta el siguiente proceso:
-
-1. **Limpieza del registro** (`cleanRegistry()`): Elimina asociaciones conflictivas previas
-2. **Registro de ProgID** (`registerProgId()`): Crea `LGA.NukeScript.1` con comando de apertura e icono
-3. **Configuración de asociación** (`setFileAssociation()`): 
-   - Prioridad 1: SetUserFTA (si está disponible)
-   - Fallback: PowerShell o comandos `reg` directos
-4. **Notificación al sistema**: Llama `SHChangeNotify()` para actualizar explorador
-5. **Logging detallado**: Registra cada paso para debugging en `logger.cpp`
-
-### Logging System
-
-Los logs se guardan en `%AppData%\LGA\OpenInNukeX\OpenInNukeX.log`:
-```
-[YYYY-MM-DD HH:MM:SS] LEVEL: Mensaje
-```
-
-El archivo se borra cada vez que inicia la aplicación.
-Niveles: `INFO`, `WARNING`, `ERROR`
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el repositorio
-2. Crear feature branch (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push branch (`git push origin feature/nueva-funcionalidad`)
-5. Crear Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo licencia MIT. Ver archivo `LICENSE` para detalles.
-
-## 🙏 Agradecimientos
-
-- **Christoph Kolbicz** por SetUserFTA - herramienta opcional que mejora la robustez de las asociaciones
-- **Microsoft** por la documentación oficial sobre file associations
-- **Qt Framework** por las herramientas de desarrollo multiplataforma
-
-## 📞 Soporte
-
-Para reportar bugs o solicitar funcionalidades:
-1. Crear issue en GitHub
-2. Incluir logs relevantes
-3. Describir pasos para reproducir el problema
-
----
+| Archivo | Funciones / Clases clave |
+|---------|--------------------------|
+| `QtClient/src/main.cpp` | `NukeApp::event()` (QFileOpenEvent), `main()`, timer 200ms macOS |
+| `QtClient/src/nukeopener.cpp` | `sendToNuke()`, `onConnected()`, `onResponseReceived()`, `openNukeWithFile()`, `onSocketTimeout()` |
+| `QtClient/src/configwindow.cpp` | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()`, `browseNukePath()`, `resolveNukeBinaryFromBundle()`, `getAppBundlePath()` |
+| `QtClient/src/nukescanner.cpp` | `getCommonNukePaths()`, `scanDirectory()`, `isValidNukeExecutable()`, `isValidNukeAppBundle()` |
+| `QtClient/CMakeLists.txt` | Targets Win/Mac, MACOSX_BUNDLE, Info.plist, icns, AGL dummy |
+| `QtClient/cmake/Info.plist.in` | CFBundleDocumentTypes (.nk), UTExportedTypeDeclarations, bundle ID |
+| `init.py` | Servidor TCP puerto 54325, handler `run_script`, handler `ping` |

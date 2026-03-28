@@ -1,7 +1,9 @@
 > **Regla de documentacion**: este archivo describe el estado actual del codigo. No es un historial de cambios, changelog ni bitacora temporal.
 > **Regla de documentacion**: este archivo debe incluir una seccion de referencias tecnicas con rutas completas a los archivos mas importantes relacionados, y para cada archivo nombrar las funciones, clases o metodos clave vinculados a este tema.
 
-# Cambios para Eliminar Permisos de Administrador
+> **Nota de plataforma**: Este documento describe cambios específicos de **Windows**. En macOS la aplicación nunca requirió permisos de administrador — la asociación de archivos usa Launch Services y `duti`, que operan en el espacio del usuario.
+
+# Cambios para Eliminar Permisos de Administrador (Windows)
 
 ## 📋 Resumen de Cambios
 
