@@ -4,3 +4,5 @@ debug/
 *.exe
 __pycache__/
 *.pyc
+deploy/
+.DS_Store
