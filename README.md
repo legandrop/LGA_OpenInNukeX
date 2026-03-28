@@ -22,7 +22,7 @@
   ```
 
 - **Windows**: ejecutar `LGA_OpenInNukeX_Setup.exe`. Al terminar la instalación, abrir la aplicación para entrar a la configuración.
-- **macOS**: copiar `LGA_OpenInNukeX.app` a una ubicación portable cualquiera. Puede estar en `/Applications`, pero no es obligatorio; la app se registra desde el bundle que se está ejecutando. Después abrir la aplicación para entrar a la configuración.
+- **macOS**: copiar `LGA_OpenInNukeX.app` a `/Applications`. Después abrir la aplicación para entrar a la configuración.
 
 <br><br>
 
@@ -47,7 +47,7 @@ Solo funciona con **NukeX** y no con otras variantes de Nuke. El servidor en `in
 ## Configuración
 
 - El botón **APPLY** asocia los archivos `.nk` con OpenInNukeX. Después de aplicarlo, hacer doble clic en cualquier `.nk` desde el Explorer o Finder lo abrirá a través de esta app.
-  - En **Windows** se usa `SetUserFTA` si está disponible junto al ejecutable, con fallback a PowerShell.
+  - En **Windows** se usa la app `SetUserFTA.exe` que viene incluida en el paquete.
   - En **macOS** se registra con Launch Services y usa `duti` si está instalado (`brew install duti`). Si no, la app indica el flujo manual en Finder: clic derecho en un `.nk` → Obtener información → Abrir con → Cambiar todo.
 
 - La sección **Preferred Nuke Version** escanea automáticamente las rutas comunes del sistema al abrirse y muestra un botón por cada versión de Nuke detectada. Al hacer clic en uno de esos botones la ruta se carga en el campo de texto. Si la instalación de Nuke está en una ubicación no estándar, se puede usar **BROWSE** para localizarla manualmente.
