@@ -29,7 +29,7 @@ def clean_text(text: str) -> str:
 
 def normalize_text(text: str) -> str:
     replacements = {
-        " ": " ",
+        "": " ",
     }
     for source, target in replacements.items():
         text = text.replace(source, target)
