@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(LGA_OpenInNukeX VERSION 1.54.0 LANGUAGES CXX)
+project(LGA_OpenInNukeX VERSION 1.65.0 LANGUAGES CXX)
 
 # Generate compile_commands.json for IntelliSense and clangd.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

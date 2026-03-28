@@ -194,7 +194,7 @@ echo ""
 # Ofrecer crear ZIP
 read -p "¿Crear ZIP para distribución? (s/N): " CREATE_ZIP
 if [[ "$CREATE_ZIP" =~ ^[sS]$ ]]; then
-    ZIP_NAME="LGA_OpenInNukeX_v1.54_mac.zip"
+    ZIP_NAME="LGA_OpenInNukeX_v1.65_mac.zip"
     cd deploy
     zip -r "../$ZIP_NAME" LGA_OpenInNukeX.app
     cd ..
