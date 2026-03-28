@@ -1,12 +1,25 @@
 #!/bin/bash
 
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+PROJECT_VERSION_FULL="$(sed -nE 's/^project\(LGA_OpenInNukeX VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)$/\1/p' CMakeLists.txt)"
+if [ -z "$PROJECT_VERSION_FULL" ]; then
+    echo "❌ No se pudo obtener la version desde CMakeLists.txt"
+    exit 1
+fi
+
+PROJECT_VERSION_SHORT="${PROJECT_VERSION_FULL%.*}"
+
 # Workaround para Qt 6.5.3 en macOS 15+ / M1
 if [ "$(uname -m)" = "arm64" ]; then
     echo "Detectado ARM64. Relanzando bajo Rosetta..."
     exec arch -x86_64 "$0" "$@"
 fi
 
-echo "🚀 Deploy LGA_OpenInNukeX para distribución"
+echo "🚀 Deploy LGA_OpenInNukeX v$PROJECT_VERSION_SHORT para distribución"
 
 # Borrar deploy anterior
 if [ -d "deploy" ]; then
@@ -84,84 +97,6 @@ cp resources/LGA_OpenInNukeX.icns \
 cp dark_theme.qss \
    deploy/LGA_OpenInNukeX.app/Contents/Resources/
 
-# Info.plist con metadatos completos
-cat > deploy/LGA_OpenInNukeX.app/Contents/Info.plist << 'EOL'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>LGA_OpenInNukeX</string>
-    <key>CFBundleDisplayName</key>
-    <string>LGA OpenInNukeX</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.lga.openinnukex</string>
-    <key>CFBundleVersion</key>
-    <string>1.54.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.54</string>
-    <key>CFBundleExecutable</key>
-    <string>LGA_OpenInNukeX</string>
-    <key>CFBundleIconFile</key>
-    <string>LGA_OpenInNukeX</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>12.0.0</string>
-    <key>LSArchitecturePriority</key>
-    <array>
-        <string>arm64</string>
-        <string>x86_64</string>
-    </array>
-    <key>LSRequiresNativeExecution</key>
-    <false/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSSupportsAutomaticGraphicsSwitching</key>
-    <true/>
-    <key>CFBundleDocumentTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleTypeExtensions</key>
-            <array><string>nk</string></array>
-            <key>CFBundleTypeName</key>
-            <string>Nuke Script</string>
-            <key>CFBundleTypeRole</key>
-            <string>Viewer</string>
-            <key>LSHandlerRank</key>
-            <string>Owner</string>
-            <key>LSItemContentTypes</key>
-            <array>
-                <string>com.foundry.nuke.script</string>
-                <string>public.data</string>
-            </array>
-        </dict>
-    </array>
-    <key>UTExportedTypeDeclarations</key>
-    <array>
-        <dict>
-            <key>UTTypeIdentifier</key>
-            <string>com.foundry.nuke.script</string>
-            <key>UTTypeDescription</key>
-            <string>Nuke Script</string>
-            <key>UTTypeConformsTo</key>
-            <array><string>public.data</string></array>
-            <key>UTTypeTagSpecification</key>
-            <dict>
-                <key>public.filename-extension</key>
-                <array><string>nk</string></array>
-            </dict>
-        </dict>
-    </array>
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <true/>
-    </dict>
-</dict>
-</plist>
-EOL
-
 # macdeployqt para incluir Qt frameworks
 echo "📦 Ejecutando macdeployqt en deploy bundle..."
 "$QT_PATH/bin/macdeployqt" deploy/LGA_OpenInNukeX.app 2>/dev/null || \
@@ -194,7 +129,7 @@ echo ""
 # Ofrecer crear ZIP
 read -p "¿Crear ZIP para distribución? (s/N): " CREATE_ZIP
 if [[ "$CREATE_ZIP" =~ ^[sS]$ ]]; then
-    ZIP_NAME="LGA_OpenInNukeX_v1.65_mac.zip"
+    ZIP_NAME="LGA_OpenInNukeX_v${PROJECT_VERSION_SHORT}_mac.zip"
     cd deploy
     zip -r "../$ZIP_NAME" LGA_OpenInNukeX.app
     cd ..
