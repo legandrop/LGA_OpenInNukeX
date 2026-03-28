@@ -36,55 +36,24 @@
 La lógica de apertura es esta:
 
 1. Si ya hay una instancia de **NukeX** abierta, el cliente envía el `.nk` vía TCP a esa sesión activa.
-2. Si no hay una instancia abierta, el cliente lanza el ejecutable configurado de **NukeX** con el archivo como argumento.
+2. Si no hay una instancia abierta, el cliente lanza el ejecutable de **NukeX** configurado en la sección **Preferred Nuke Version**.
 
-Está pensado para trabajar con **NukeX** y no con otras variantes de Nuke.
+Solo funciona con **NukeX** y no con otras variantes de Nuke. El servidor en `init.py` verifica esto antes de iniciar.
 
-<br><br>
 
 ![](Doc_Media/image2.png)
 
-<br><br>
 
 ## Configuración
 
-- El botón **APPLY** asocia a los archivos `.nk` con OpenInNukeX. Esto permite que al abrir cualquier `.nk` desde el Explorer o Finder, sea OpenInNukeX quien gestione cómo se abren los archivos.
-- En **Windows** se usa una herramienta externa para esto: `SetUserFTA`.
-- En **macOS** la app se registra con Launch Services y, si `duti` está instalado, intenta dejarse como handler por defecto de `.nk`. Si `duti` no está disponible, la app muestra el flujo manual de Finder para hacer `Open with` y `Change All`.
-- Si hay alguna ventana de **Nuke** abierta, los archivos se abrirán siempre en esa ventana abierta.
-- Si no hay una ventana de **Nuke** abierta, se usará la versión de Nuke seleccionada en el menú de abajo, en **NukeX**.
+- El botón **APPLY** asocia los archivos `.nk` con OpenInNukeX. Después de aplicarlo, hacer doble clic en cualquier `.nk` desde el Explorer o Finder lo abrirá a través de esta app.
+  - En **Windows** se usa `SetUserFTA` si está disponible junto al ejecutable, con fallback a PowerShell.
+  - En **macOS** se registra con Launch Services y usa `duti` si está instalado (`brew install duti`). Si no, la app indica el flujo manual en Finder: clic derecho en un `.nk` → Obtener información → Abrir con → Cambiar todo.
 
-**Ruta de NukeX**
-
-- En Windows hay que elegir el ejecutable de NukeX.
-- En macOS se puede elegir el `.app` o directamente el binario dentro del bundle. Ejemplo:
-
-  ```bash
-  /Applications/Nuke16.0v8/Nuke16.0v8.app/Contents/MacOS/Nuke16.0
-  ```
-
-<br><br>
-
-## Notas para developers
-
-El cliente funciona en **Windows 10/11** y **macOS 12+**.
-
-- Sin argumentos abre la ventana de configuración.
-- Con un `.nk` recibido desde Finder, Explorer o línea de comandos intenta abrirlo en NukeX.
-- Guarda configuración y logs en la ubicación estándar del sistema.
-
-**Configuración**
-
-- **APPLY**: registra la asociación de archivos `.nk`.
-- **BROWSE**: permite elegir el ejecutable o bundle de NukeX.
-- **SAVE**: guarda la ruta preferida de NukeX.
-
-**Rutas de configuración**
-
-| Plataforma | Configuración | Logs |
-|---|---|---|
-| Windows | `%AppData%\\LGA\\OpenInNukeX\\nukeXpath.txt` | `%AppData%\\LGA\\OpenInNukeX\\OpenInNukeX.log` |
-| macOS | `~/Library/Application Support/LGA/OpenInNukeX/nukeXpath.txt` | `~/Library/Application Support/LGA/OpenInNukeX/OpenInNukeX.log` |
+- La sección **Preferred Nuke Version** escanea automáticamente las rutas comunes del sistema al abrirse y muestra un botón por cada versión de Nuke detectada. Al hacer clic en uno de esos botones la ruta se carga en el campo de texto. Si la instalación de Nuke está en una ubicación no estándar, se puede usar **BROWSE** para localizarla manualmente.
+  - En **Windows** escanea `C:\Program Files` y `C:\Program Files (x86)`.
+  - En **macOS** escanea `/Applications`.
+  - El botón **BROWSE** en macOS acepta tanto el `.app` como el binario directamente y resuelve la ruta automáticamente.
 
 <br><br>
 
@@ -94,22 +63,17 @@ El cliente funciona en **Windows 10/11** y **macOS 12+**.
 
 ```bat
 cd QtClient/scripts
-compilar.bat
-deploy.bat
-instalador.bat
+deploy.bat       # Release + paquete portable
+instalador.bat   # Genera el instalador .exe con Inno Setup
 ```
 
 **macOS**
 
 ```bash
 cd QtClient
-./limpiar.sh
-./compilar_dev.sh
-./compilar.sh
-./deploy.sh
+./compilar_dev.sh   # Build rápido (Debug) para desarrollo y pruebas
+./deploy.sh         # Build Release, genera el .app distribuible
 ```
-
-Los scripts de macOS contemplan el empaquetado del `.app` y los pasos de deploy del cliente Qt.
 
 <br><br>
 
