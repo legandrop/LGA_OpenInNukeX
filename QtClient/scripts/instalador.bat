@@ -99,7 +99,7 @@ if exist "%INSTALLER_FILE%" (
     for %%A in ("%INSTALLER_FILE%") do echo %%~zA bytes
     echo.
     echo El instalador incluye:
-    echo ✓ Aplicación LGA OpenInNukeX v1.66
+    echo ✓ Aplicación LGA OpenInNukeX
     echo ✓ Todas las dependencias Qt necesarias
     echo ✓ Icono LGA_NukeShortcuts para la aplicación
     echo ✓ Icono app_icon para archivos .nk asociados
