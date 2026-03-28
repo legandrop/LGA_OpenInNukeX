@@ -9,10 +9,10 @@
 #include <QTimer>
 
 struct NukeVersion {
-    QString name;           // Ej: "Nuke15.0v4"
-    QString path;           // Ruta completa al ejecutable
-    QString version;        // Ej: "15.0v4"
-    QString displayName;    // Ej: "Nuke 15.0v4"
+    QString name;           // e.g. "Nuke15.0v4"
+    QString path;           // full path to the executable binary
+    QString version;        // e.g. "15.0v4"
+    QString displayName;    // e.g. "Nuke 15.0v4"
 };
 
 class NukeScanner : public QObject
@@ -38,9 +38,13 @@ private:
     NukeVersion parseNukeExecutable(const QString &executablePath);
     bool isValidNukeExecutable(const QString &executablePath);
     bool isValidNukeDirectory(const QString &dirPath);
-    
+
+#ifndef Q_OS_WIN
+    bool isValidNukeAppBundle(const QString &bundlePath);
+#endif
+
     QThread *workerThread;
     QList<NukeVersion> foundVersions;
 };
 
-#endif // NUKESCANNER_H 
+#endif // NUKESCANNER_H

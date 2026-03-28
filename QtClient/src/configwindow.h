@@ -44,23 +44,30 @@ private:
     void loadStyleSheet();
     void saveNukePath(const QString &path);
     QString getNukePathFromFile();
-    void executeRegistryCommands();
-    bool cleanRegistry();
-    bool registerProgId();
-    bool setFileAssociation();
     bool executeCommand(const QString &program, const QStringList &arguments);
-    
+
     // Scanner de versiones
     void initializeScanner();
     void createVersionButtons(const QList<NukeVersion> &versions);
     void calculateAndResizeWindow();
+
+#ifdef Q_OS_WIN
+    void executeRegistryCommands();
+    bool cleanRegistry();
+    bool registerProgId();
+    bool setFileAssociation();
+#else
+    void executeMacAssociation();
+    QString getAppBundlePath() const;
+    QString resolveNukeBinaryFromBundle(const QString &bundlePath) const;
+#endif
 
     QLineEdit *nukePathEdit;
     QPushButton *browseButton;
     QPushButton *saveButton;
     QPushButton *applyButton;
     QLabel *descriptionLabel;
-    
+
     // Scanner de versiones
     NukeScanner *nukeScanner;
     QWidget *versionsContainer;

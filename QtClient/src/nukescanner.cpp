@@ -14,126 +14,91 @@ NukeScanner::NukeScanner(QObject *parent)
 void NukeScanner::startScan()
 {
     Logger::logInfo("=== INICIANDO ESCANEO DE VERSIONES DE NUKE ===");
-    
+
     foundVersions.clear();
     emit scanStarted();
-    
-    // Usar QTimer para realizar el escaneo de forma asíncrona sin mover el objeto a otro hilo
+
     QTimer::singleShot(100, this, &NukeScanner::performScan);
 }
 
 void NukeScanner::performScan()
 {
     Logger::logInfo("=== INICIANDO ESCANEO COMPLETO DE VERSIONES NUKE ===");
-    
+
     QStringList searchPaths = getCommonNukePaths();
     Logger::logInfo(QString("Directorios Nuke encontrados para escanear: %1").arg(searchPaths.size()));
-    
+
     if (searchPaths.isEmpty()) {
-        Logger::logInfo("❌ No se encontraron directorios de Nuke para escanear");
+        Logger::logInfo("No se encontraron directorios de Nuke para escanear");
         emit scanFinished(foundVersions);
         return;
     }
-    
+
     for (const QString &path : searchPaths) {
         emit scanProgress(path);
-        Logger::logInfo(QString("=== ESCANEANDO DIRECTORIO: %1 ===").arg(path));
-        
+        Logger::logInfo(QString("=== ESCANEANDO: %1 ===").arg(path));
+
         QList<NukeVersion> versions = scanDirectory(path);
         Logger::logInfo(QString("Ejecutables encontrados en %1: %2").arg(path).arg(versions.size()));
-        
+
         for (const NukeVersion &version : versions) {
             foundVersions.append(version);
             emit versionFound(version);
-            Logger::logInfo(QString("✓ VERSIÓN AGREGADA: %1 -> %2").arg(version.displayName, version.path));
+            Logger::logInfo(QString("VERSION AGREGADA: %1 -> %2").arg(version.displayName, version.path));
         }
     }
-    
-    Logger::logInfo(QString("=== ESCANEO COMPLETADO: %1 versiones totales encontradas ===").arg(foundVersions.size()));
-    
-    // Mostrar resumen de versiones encontradas
-    if (foundVersions.isEmpty()) {
-        Logger::logInfo("❌ RESULTADO FINAL: No se encontraron versiones válidas de Nuke");
-    } else {
-        Logger::logInfo("✅ RESULTADO FINAL: Versiones encontradas:");
-        for (const NukeVersion &version : foundVersions) {
-            Logger::logInfo(QString("  - %1: %2").arg(version.displayName, version.path));
-        }
-    }
-    
-    // Emitir señal de finalización
+
+    Logger::logInfo(QString("=== ESCANEO COMPLETADO: %1 versiones totales ===").arg(foundVersions.size()));
     emit scanFinished(foundVersions);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Windows implementation
+// ─────────────────────────────────────────────────────────────────────────────
+#ifdef Q_OS_WIN
+
 QStringList NukeScanner::getCommonNukePaths()
 {
-    Logger::logInfo("=== INICIANDO BÚSQUEDA DINÁMICA DE DIRECTORIOS NUKE ===");
-    
+    Logger::logInfo("=== BUSQUEDA WINDOWS: Program Files ===");
+
     QStringList foundPaths;
-    
-    // Directorios base donde buscar
     QStringList baseDirs = {
         "C:/Program Files",
         "C:/Program Files (x86)",
         "C:/Program Files/Foundry"
     };
-    
+
     for (const QString &baseDir : baseDirs) {
-        Logger::logInfo(QString("Escaneando directorio base: %1").arg(baseDir));
-        
         QDir dir(baseDir);
-        if (!dir.exists()) {
-            Logger::logInfo(QString("Directorio no existe: %1").arg(baseDir));
-            continue;
-        }
-        
-        // Buscar todas las carpetas que contengan "Nuke"
-        QStringList filters;
-        filters << "*Nuke*";
-        
-        QFileInfoList subdirs = dir.entryInfoList(filters, QDir::Dirs | QDir::NoDotAndDotDot);
-        
-        Logger::logInfo(QString("Encontradas %1 carpetas con 'Nuke' en %2").arg(subdirs.size()).arg(baseDir));
-        
+        if (!dir.exists()) continue;
+
+        QFileInfoList subdirs = dir.entryInfoList(QStringList() << "*Nuke*",
+                                                  QDir::Dirs | QDir::NoDotAndDotDot);
         for (const QFileInfo &subdir : subdirs) {
             QString nukePath = subdir.absoluteFilePath();
-            Logger::logInfo(QString("Evaluando directorio: %1").arg(nukePath));
-            
-            // Verificar que realmente parece un directorio de Nuke
             if (isValidNukeDirectory(nukePath)) {
                 foundPaths << nukePath;
-                Logger::logInfo(QString("✓ Directorio Nuke válido agregado: %1").arg(nukePath));
-            } else {
-                Logger::logInfo(QString("✗ Directorio no válido (sin ejecutables Nuke): %1").arg(nukePath));
+                Logger::logInfo(QString("Directorio Nuke valido: %1").arg(nukePath));
             }
         }
     }
-    
-    Logger::logInfo(QString("=== BÚSQUEDA COMPLETADA: %1 directorios Nuke encontrados ===").arg(foundPaths.size()));
-    
+
+    Logger::logInfo(QString("Directorios encontrados: %1").arg(foundPaths.size()));
     return foundPaths;
 }
 
 bool NukeScanner::isValidNukeDirectory(const QString &dirPath)
 {
     QDir dir(dirPath);
-    if (!dir.exists()) {
-        return false;
-    }
-    
-    // Buscar ejecutables de Nuke en el directorio
-    QStringList filters;
-    filters << "Nuke*.exe" << "nuke*.exe";
-    
-    QFileInfoList files = dir.entryInfoList(filters, QDir::Files);
-    
-    // Debe tener al menos un ejecutable de Nuke
+    if (!dir.exists()) return false;
+
+    QFileInfoList files = dir.entryInfoList(
+        QStringList() << "Nuke*.exe" << "nuke*.exe", QDir::Files);
+
     for (const QFileInfo &file : files) {
-        if (isValidNukeExecutable(file.absoluteFilePath())) {
+        if (isValidNukeExecutable(file.absoluteFilePath()))
             return true;
-        }
     }
-    
     return false;
 }
 
@@ -141,46 +106,190 @@ QList<NukeVersion> NukeScanner::scanDirectory(const QString &dirPath)
 {
     QList<NukeVersion> versions;
     QDir dir(dirPath);
-    
-    if (!dir.exists()) {
-        return versions;
-    }
-    
-    // Buscar ejecutables de Nuke en el directorio
-    QStringList filters;
-    filters << "Nuke*.exe" << "nuke*.exe";
-    
-    QFileInfoList files = dir.entryInfoList(filters, QDir::Files);
-    
+    if (!dir.exists()) return versions;
+
+    QFileInfoList files = dir.entryInfoList(
+        QStringList() << "Nuke*.exe" << "nuke*.exe", QDir::Files);
+
     for (const QFileInfo &fileInfo : files) {
         if (isValidNukeExecutable(fileInfo.absoluteFilePath())) {
             NukeVersion version = parseNukeExecutable(fileInfo.absoluteFilePath());
-            if (!version.name.isEmpty()) {
+            if (!version.name.isEmpty())
                 versions.append(version);
-            }
         }
     }
-    
     return versions;
 }
 
+bool NukeScanner::isValidNukeExecutable(const QString &executablePath)
+{
+    QFileInfo fileInfo(executablePath);
+    if (!fileInfo.exists() || !fileInfo.isFile() || !fileInfo.isExecutable())
+        return false;
+
+    if (fileInfo.suffix().toLower() != "exe")
+        return false;
+
+    QString fileName = fileInfo.fileName().toLower();
+    if (!fileName.contains("nuke"))
+        return false;
+
+    // Filtrar herramientas auxiliares
+    if (fileName.contains("crash") || fileName.contains("feedback") ||
+        fileName.contains("update") || fileName.contains("uninstall") ||
+        fileName.contains("setup") || fileName.contains("install"))
+        return false;
+
+    return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  macOS implementation
+// ─────────────────────────────────────────────────────────────────────────────
+#else // Q_OS_MAC / Unix
+
+QStringList NukeScanner::getCommonNukePaths()
+{
+    Logger::logInfo("=== BUSQUEDA macOS: /Applications ===");
+
+    QStringList foundBundles;
+
+    // Nuke installs under /Applications, typically as:
+    //   /Applications/Nuke15.0v1/Nuke15.0v1.app   (subdirectory + bundle)
+    //   /Applications/Nuke15.0v1.app               (direct bundle)
+    QStringList baseDirs = { "/Applications" };
+
+    for (const QString &baseDir : baseDirs) {
+        QDir dir(baseDir);
+        if (!dir.exists()) continue;
+
+        QFileInfoList entries = dir.entryInfoList(
+            QStringList() << "Nuke*",
+            QDir::Dirs | QDir::NoDotAndDotDot);
+
+        for (const QFileInfo &entry : entries) {
+            QString entryPath = entry.absoluteFilePath();
+
+            if (entryPath.endsWith(".app", Qt::CaseInsensitive)) {
+                // Direct .app bundle in /Applications
+                if (isValidNukeAppBundle(entryPath)) {
+                    foundBundles << entryPath;
+                    Logger::logInfo(QString("Bundle directo: %1").arg(entryPath));
+                }
+            } else if (entry.isDir()) {
+                // Subdirectory — look for .app bundles inside
+                QDir nukeDir(entryPath);
+                QFileInfoList appBundles = nukeDir.entryInfoList(
+                    QStringList() << "Nuke*.app",
+                    QDir::Dirs | QDir::NoDotAndDotDot);
+
+                for (const QFileInfo &bundle : appBundles) {
+                    if (isValidNukeAppBundle(bundle.absoluteFilePath())) {
+                        foundBundles << bundle.absoluteFilePath();
+                        Logger::logInfo(QString("Bundle en subdir: %1").arg(bundle.absoluteFilePath()));
+                    }
+                }
+            }
+        }
+    }
+
+    Logger::logInfo(QString("Bundles encontrados: %1").arg(foundBundles.size()));
+    return foundBundles;
+}
+
+bool NukeScanner::isValidNukeAppBundle(const QString &bundlePath)
+{
+    // Must end in .app and contain Contents/MacOS with a Nuke binary
+    if (!bundlePath.endsWith(".app", Qt::CaseInsensitive))
+        return false;
+
+    QDir macosDir(bundlePath + "/Contents/MacOS");
+    if (!macosDir.exists())
+        return false;
+
+    QFileInfoList files = macosDir.entryInfoList(QDir::Files | QDir::Executable);
+    for (const QFileInfo &f : files) {
+        if (isValidNukeExecutable(f.absoluteFilePath()))
+            return true;
+    }
+    return false;
+}
+
+// On macOS, scanDirectory receives a .app bundle path.
+// It returns the Nuke binary inside Contents/MacOS.
+QList<NukeVersion> NukeScanner::scanDirectory(const QString &bundlePath)
+{
+    QList<NukeVersion> versions;
+
+    QDir macosDir(bundlePath + "/Contents/MacOS");
+    if (!macosDir.exists()) return versions;
+
+    QFileInfoList files = macosDir.entryInfoList(QDir::Files | QDir::Executable);
+    for (const QFileInfo &fileInfo : files) {
+        if (isValidNukeExecutable(fileInfo.absoluteFilePath())) {
+            NukeVersion version = parseNukeExecutable(fileInfo.absoluteFilePath());
+            if (!version.name.isEmpty())
+                versions.append(version);
+        }
+    }
+    return versions;
+}
+
+// On macOS there's no .exe — validate by name, exclude .dylib and other non-executables
+bool NukeScanner::isValidNukeExecutable(const QString &executablePath)
+{
+    QFileInfo fileInfo(executablePath);
+    if (!fileInfo.exists() || !fileInfo.isFile() || !fileInfo.isExecutable())
+        return false;
+
+    // Exclude shared libraries and other non-executable file types
+    QString suffix = fileInfo.suffix().toLower();
+    if (suffix == "dylib" || suffix == "so" || suffix == "framework" ||
+        suffix == "a" || suffix == "o")
+        return false;
+
+    QString fileName = fileInfo.fileName().toLower();
+    if (!fileName.contains("nuke"))
+        return false;
+
+    // Filter auxiliary tools
+    if (fileName.contains("crash") || fileName.contains("feedback") ||
+        fileName.contains("update") || fileName.contains("uninstall") ||
+        fileName.contains("setup") || fileName.contains("install") ||
+        fileName.contains("python") || fileName.contains("helper"))
+        return false;
+
+    return true;
+}
+
+// isValidNukeDirectory is only used on Windows, but stub it for Unix builds
+bool NukeScanner::isValidNukeDirectory(const QString &dirPath)
+{
+    Q_UNUSED(dirPath)
+    return false;
+}
+
+#endif // Q_OS_WIN / macOS
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Shared: parse version number from path (works on both platforms)
+// ─────────────────────────────────────────────────────────────────────────────
 NukeVersion NukeScanner::parseNukeExecutable(const QString &executablePath)
 {
     NukeVersion version;
     QFileInfo fileInfo(executablePath);
-    
+
     version.path = executablePath;
     version.name = fileInfo.baseName();
-    
-    // Extraer versión del nombre del archivo o directorio
+
+    // Extract version from path, e.g. "15.0v4" from "Nuke15.0v4" or directory name
     QRegularExpression versionRegex(R"((\d+\.\d+(?:v\d+)?))");
     QRegularExpressionMatch match = versionRegex.match(executablePath);
-    
+
     if (match.hasMatch()) {
         version.version = match.captured(1);
         version.displayName = QString("Nuke %1").arg(version.version);
     } else {
-        // Si no se puede extraer la versión, usar el nombre del directorio padre
         QString parentDir = fileInfo.dir().dirName();
         QRegularExpressionMatch parentMatch = versionRegex.match(parentDir);
         if (parentMatch.hasMatch()) {
@@ -191,52 +300,6 @@ NukeVersion NukeScanner::parseNukeExecutable(const QString &executablePath)
             version.displayName = QString("Nuke (%1)").arg(fileInfo.baseName());
         }
     }
-    
+
     return version;
 }
-
-bool NukeScanner::isValidNukeExecutable(const QString &executablePath)
-{
-    QFileInfo fileInfo(executablePath);
-    
-    // Verificar que es un archivo ejecutable
-    if (!fileInfo.exists() || !fileInfo.isFile() || !fileInfo.isExecutable()) {
-        return false;
-    }
-    
-    QString fileName = fileInfo.fileName().toLower();
-    
-    // Verificar que es un .exe
-    if (fileInfo.suffix().toLower() != "exe") {
-        return false;
-    }
-    
-    // Verificar que el nombre contiene "nuke"
-    if (!fileName.contains("nuke")) {
-        return false;
-    }
-    
-    // FILTRAR archivos que NO son el ejecutable principal de Nuke
-    // Excluir archivos como nukeCrashFeedback.exe, etc.
-    if (fileName.contains("crash") || 
-        fileName.contains("feedback") || 
-        fileName.contains("update") || 
-        fileName.contains("uninstall") ||
-        fileName.contains("setup") ||
-        fileName.contains("install")) {
-        Logger::logInfo(QString("✗ Ejecutable filtrado (no es Nuke principal): %1").arg(fileName));
-        return false;
-    }
-    
-    // Verificar que es un ejecutable principal de Nuke
-    // Ejemplos válidos: Nuke.exe, NukeX.exe, Nuke13.1.exe, Nuke15.1.exe, etc.
-    if (fileName == "nuke.exe" || 
-        fileName == "nukex.exe" ||
-        (fileName.startsWith("nuke") && fileName.endsWith(".exe") && !fileName.contains("crash"))) {
-        Logger::logInfo(QString("✓ Ejecutable válido de Nuke: %1").arg(fileName));
-        return true;
-    }
-    
-    Logger::logInfo(QString("✗ Ejecutable no reconocido como Nuke principal: %1").arg(fileName));
-    return false;
-} 

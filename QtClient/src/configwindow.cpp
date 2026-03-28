@@ -304,18 +304,34 @@ QString ConfigWindow::getNukePathFromFile()
 void ConfigWindow::browseNukePath()
 {
     QString currentPath = nukePathEdit->text();
-    QString startDir = currentPath.isEmpty() ? "C:/Program Files/" : QDir(currentPath).absolutePath();
 
+#ifdef Q_OS_WIN
+    QString startDir = currentPath.isEmpty() ? "C:/Program Files/" : QDir(currentPath).absolutePath();
     QString selectedPath = QFileDialog::getOpenFileName(
         this,
-        "Seleccionar NukeX.exe o Nuke.exe",
+        "Select NukeX.exe or Nuke.exe",
         startDir,
         "Executable Files (*.exe);;All Files (*)");
-
     if (!selectedPath.isEmpty())
-    {
+        nukePathEdit->setText(selectedPath);
+#else
+    // On macOS, start at /Applications and accept any file (incl. .app bundles)
+    QString startDir = currentPath.isEmpty() ? "/Applications" : QDir(currentPath).absolutePath();
+    QString selectedPath = QFileDialog::getOpenFileName(
+        this,
+        "Select Nuke application or binary",
+        startDir,
+        "All Files (*)");
+    if (!selectedPath.isEmpty()) {
+        // If the user picked a .app bundle, resolve the binary inside it
+        if (selectedPath.endsWith(".app", Qt::CaseInsensitive)) {
+            QString resolved = resolveNukeBinaryFromBundle(selectedPath);
+            if (!resolved.isEmpty())
+                selectedPath = resolved;
+        }
         nukePathEdit->setText(selectedPath);
     }
+#endif
 }
 
 void ConfigWindow::saveConfiguration()
@@ -335,12 +351,23 @@ void ConfigWindow::saveConfiguration()
         return;
     }
 
-    // Verificar que es un ejecutable de Nuke
+    // Verificar que parece un ejecutable de Nuke
     QString fileName = QFileInfo(nukePath).fileName().toLower();
     if (!fileName.contains("nuke"))
     {
         QMessageBox::warning(this, "Warning", "The selected file does not appear to be a Nuke executable.");
     }
+
+#ifndef Q_OS_WIN
+    // On macOS, if the user somehow saved a .app path, resolve the binary now
+    if (nukePath.endsWith(".app", Qt::CaseInsensitive)) {
+        QString resolved = resolveNukeBinaryFromBundle(nukePath);
+        if (!resolved.isEmpty()) {
+            nukePath = resolved;
+            nukePathEdit->setText(nukePath);
+        }
+    }
+#endif
 
     saveNukePath(nukePath);
 
@@ -368,144 +395,140 @@ void ConfigWindow::saveNukePath(const QString &path)
 void ConfigWindow::applyFileAssociation()
 {
     Logger::logInfo("=== INICIANDO ASOCIACIÓN DE ARCHIVOS .NK ===");
-    
+
     QString nukePath = nukePathEdit->text().trimmed();
     Logger::logInfo(QString("Ruta de NukeX: %1").arg(nukePath));
-    
+
     if (nukePath.isEmpty()) {
         Logger::logError("Error: Ruta de NukeX vacía");
         QMessageBox::warning(this, "Error", "Please select a valid path for NukeX first.");
         return;
     }
-    
+
     if (!QFile::exists(nukePath)) {
         Logger::logError(QString("Error: El archivo no existe: %1").arg(nukePath));
         QMessageBox::warning(this, "Error", "The selected file does not exist.");
         return;
     }
-    
-    Logger::logInfo("Usuario confirmó la asociación - iniciando proceso");
-    
+
+    Logger::logInfo("Guardando configuración de NukeX");
+    saveNukePath(nukePath);
+
+#ifdef Q_OS_WIN
     try {
-        // Primero guardar la configuración
-        Logger::logInfo("Guardando configuración de NukeX");
-        saveNukePath(nukePath);
-        
-        // Ejecutar los comandos de registro
-        Logger::logInfo("Ejecutando comandos de registro");
+        Logger::logInfo("Ejecutando comandos de registro (Windows)");
         executeRegistryCommands();
-        
         Logger::logInfo("Asociación completada exitosamente");
-        QMessageBox::information(this, "Association Completed", 
+        QMessageBox::information(this, "Association Completed",
             "The .nk file association has been successfully configured.\n\n"
             "You can now double-click .nk files to open them with NukeX.");
-            
     } catch (const std::exception& e) {
         Logger::logError(QString("Excepción durante asociación: %1").arg(e.what()));
-        QMessageBox::critical(this, "Error", 
+        QMessageBox::critical(this, "Error",
             QString("Error configuring file association:\n%1").arg(e.what()));
     }
+#else
+    executeMacAssociation();
+#endif
 }
 
-void ConfigWindow::executeRegistryCommands()
-{
-    Logger::logInfo("=== EJECUTANDO COMANDOS DE REGISTRO ===");
-    QStringList errors;
-    
-    // Paso 1: Limpiar registro
-    Logger::logInfo("PASO 1: Limpiando registro...");
-    if (!cleanRegistry()) {
-        errors << "Error al limpiar el registro";
-        Logger::logError("PASO 1 FALLÓ: Error al limpiar el registro");
-    } else {
-        Logger::logInfo("PASO 1 COMPLETADO: Registro limpiado exitosamente");
-    }
-    
-    // Esperar un poco para que Windows procese
-    Logger::logInfo("Esperando 1 segundo para que Windows procese...");
-    QThread::msleep(1000);
-    
-    // Paso 2: Registrar ProgID
-    Logger::logInfo("PASO 2: Registrando ProgID...");
-    if (!registerProgId()) {
-        errors << "Error al registrar ProgID";
-        Logger::logError("PASO 2 FALLÓ: Error al registrar ProgID");
-    } else {
-        Logger::logInfo("PASO 2 COMPLETADO: ProgID registrado exitosamente");
-    }
-    
-    // Paso 3: Configurar asociación
-    Logger::logInfo("PASO 3: Configurando asociación...");
-    if (!setFileAssociation()) {
-        errors << "Error al configurar asociación";
-        Logger::logError("PASO 3 FALLÓ: Error al configurar asociación");
-    } else {
-        Logger::logInfo("PASO 3 COMPLETADO: Asociación configurada exitosamente");
-    }
-    
-    if (!errors.isEmpty()) {
-        Logger::logError(QString("Se encontraron errores: %1").arg(errors.join("; ")));
-        QMessageBox::warning(this, "Warnings", 
-            "Some issues were found:\n" + errors.join("\n") + 
-            "\n\nFile association may not work completely.");
-    }
-    
-    // Notificar cambios al explorador
-    Logger::logInfo("PASO 4: Notificando cambios al Explorador...");
-    if (executeCommand("rundll32.exe", QStringList() << "shell32.dll,SHChangeNotify" << "0x08000000,0x0000,0,0")) {
-        Logger::logInfo("PASO 4 COMPLETADO: Explorador notificado exitosamente");
-    } else {
-        Logger::logError("PASO 4 FALLÓ: Error al notificar al Explorador");
-    }
-    
-    Logger::logInfo("=== COMANDOS DE REGISTRO COMPLETADOS ===");
-}
-
+// ─── executeCommand: shared by Windows and macOS ─────────────────────────────
 bool ConfigWindow::executeCommand(const QString &program, const QStringList &arguments)
 {
     QString commandStr = QString("%1 %2").arg(program, arguments.join(" "));
     Logger::logInfo(QString("=== EJECUTANDO COMANDO ==="));
     Logger::logInfo(QString("Comando: %1").arg(commandStr));
-    
+
     QProcess process;
     process.start(program, arguments);
-    
+
     if (!process.waitForStarted(3000)) {
         Logger::logError(QString("Error al iniciar comando: %1").arg(commandStr));
         Logger::logError(QString("Error del proceso: %1").arg(process.errorString()));
         return false;
     }
-    
+
     if (!process.waitForFinished(10000)) {
         Logger::logError(QString("Timeout esperando comando: %1").arg(commandStr));
         process.kill();
         return false;
     }
-    
+
     int exitCode = process.exitCode();
     QString stdOut = process.readAllStandardOutput();
     QString stdErr = process.readAllStandardError();
-    
+
     Logger::logInfo(QString("Código de salida: %1").arg(exitCode));
-    if (!stdOut.isEmpty()) {
+    if (!stdOut.isEmpty())
         Logger::logInfo(QString("Salida estándar: %1").arg(stdOut.trimmed()));
-    }
-    if (!stdErr.isEmpty()) {
+    if (!stdErr.isEmpty())
         Logger::logInfo(QString("Error estándar: %1").arg(stdErr.trimmed()));
-    }
-    
+
     if (exitCode != 0) {
-        // Para comandos reg delete, el código de salida 1 es normal si la clave no existe
+        // Para 'reg delete', código 1 es normal si la clave no existe
         if (program == "reg" && arguments.contains("delete") && exitCode == 1) {
             Logger::logInfo("Código 1 en reg delete es normal (clave no existe)");
-            return true; // No es realmente un error
+            return true;
         }
         Logger::logError(QString("Comando falló con código: %1").arg(exitCode));
         return false;
     }
-    
+
     Logger::logInfo("Comando ejecutado exitosamente");
     return true;
+}
+
+// ─── Windows-only: registry functions ────────────────────────────────────────
+#ifdef Q_OS_WIN
+
+void ConfigWindow::executeRegistryCommands()
+{
+    Logger::logInfo("=== EJECUTANDO COMANDOS DE REGISTRO ===");
+    QStringList errors;
+
+    Logger::logInfo("PASO 1: Limpiando registro...");
+    if (!cleanRegistry()) {
+        errors << "Error al limpiar el registro";
+        Logger::logError("PASO 1 FALLÓ");
+    } else {
+        Logger::logInfo("PASO 1 COMPLETADO");
+    }
+
+    Logger::logInfo("Esperando 1 segundo para que Windows procese...");
+    QThread::msleep(1000);
+
+    Logger::logInfo("PASO 2: Registrando ProgID...");
+    if (!registerProgId()) {
+        errors << "Error al registrar ProgID";
+        Logger::logError("PASO 2 FALLÓ");
+    } else {
+        Logger::logInfo("PASO 2 COMPLETADO");
+    }
+
+    Logger::logInfo("PASO 3: Configurando asociación...");
+    if (!setFileAssociation()) {
+        errors << "Error al configurar asociación";
+        Logger::logError("PASO 3 FALLÓ");
+    } else {
+        Logger::logInfo("PASO 3 COMPLETADO");
+    }
+
+    if (!errors.isEmpty()) {
+        Logger::logError(QString("Se encontraron errores: %1").arg(errors.join("; ")));
+        QMessageBox::warning(this, "Warnings",
+            "Some issues were found:\n" + errors.join("\n") +
+            "\n\nFile association may not work completely.");
+    }
+
+    Logger::logInfo("PASO 4: Notificando cambios al Explorador...");
+    if (executeCommand("rundll32.exe",
+            QStringList() << "shell32.dll,SHChangeNotify" << "0x08000000,0x0000,0,0")) {
+        Logger::logInfo("PASO 4 COMPLETADO");
+    } else {
+        Logger::logError("PASO 4 FALLÓ");
+    }
+
+    Logger::logInfo("=== COMANDOS DE REGISTRO COMPLETADOS ===");
 }
 
 bool ConfigWindow::cleanRegistry()
@@ -653,10 +676,99 @@ bool ConfigWindow::setFileAssociation()
     }
 }
 
+#endif // Q_OS_WIN
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  macOS: file association via Launch Services + duti
+// ─────────────────────────────────────────────────────────────────────────────
+#ifndef Q_OS_WIN
+
+QString ConfigWindow::getAppBundlePath() const
+{
+    // applicationDirPath() on macOS = .../LGA_OpenInNukeX.app/Contents/MacOS
+    QDir dir(QCoreApplication::applicationDirPath());
+    dir.cdUp(); // Contents
+    dir.cdUp(); // LGA_OpenInNukeX.app
+    return dir.absolutePath();
+}
+
+QString ConfigWindow::resolveNukeBinaryFromBundle(const QString &bundlePath) const
+{
+    QDir macosDir(bundlePath + "/Contents/MacOS");
+    if (!macosDir.exists()) return QString();
+
+    QFileInfoList files = macosDir.entryInfoList(QDir::Files | QDir::Executable);
+    for (const QFileInfo &f : files) {
+        if (f.fileName().toLower().contains("nuke"))
+            return f.absoluteFilePath();
+    }
+    return QString();
+}
+
+void ConfigWindow::executeMacAssociation()
+{
+    Logger::logInfo("=== ASOCIACION macOS via Launch Services ===");
+
+    QString bundlePath = getAppBundlePath();
+    Logger::logInfo(QString("Bundle path: %1").arg(bundlePath));
+
+    // Step 1: Register the app bundle with Launch Services
+    QString lsregister =
+        "/System/Library/Frameworks/CoreServices.framework"
+        "/Frameworks/LaunchServices.framework/Support/lsregister";
+
+    if (QFile::exists(lsregister)) {
+        Logger::logInfo("Registrando bundle con Launch Services...");
+        executeCommand(lsregister, {"-f", bundlePath});
+        Logger::logInfo("Bundle registrado");
+    } else {
+        Logger::logError("lsregister no encontrado");
+    }
+
+    // Step 2: Try 'duti' to set LGA_OpenInNukeX as default handler for .nk
+    bool dutiSuccess = false;
+    QProcess dutiCheck;
+    dutiCheck.start("which", {"duti"});
+    dutiCheck.waitForFinished(3000);
+
+    if (dutiCheck.exitCode() == 0) {
+        Logger::logInfo("duti encontrado, configurando handler por defecto...");
+        dutiSuccess = executeCommand("duti", {"-s", "com.lga.openinnukex", ".nk", "all"});
+        Logger::logInfo(QString("duti resultado: %1").arg(dutiSuccess ? "exitoso" : "fallo"));
+    } else {
+        Logger::logInfo("duti no encontrado (brew install duti)");
+    }
+
+    if (dutiSuccess) {
+        QMessageBox::information(this, "Association Completed",
+            "The .nk file association has been successfully configured.\n\n"
+            "You can now double-click .nk files to open them with LGA_OpenInNukeX.");
+    } else {
+        QMessageBox::information(this, "Almost done!",
+            "The app has been registered with your system.\n\n"
+            "To set LGA_OpenInNukeX as the default app for .nk files:\n\n"
+            "1. Right-click any .nk file in Finder\n"
+            "2. Choose \"Get Info\"  (Cmd+I)\n"
+            "3. Under \"Open with:\", select LGA_OpenInNukeX\n"
+            "4. Click \"Change All...\"\n\n"
+            "Tip: install duti via Homebrew (brew install duti) to automate this step.");
+    }
+}
+
+#endif // !Q_OS_WIN
+
 void ConfigWindow::loadStyleSheet()
 {
-    // Buscar el archivo QSS en el directorio de la aplicación
+#ifdef Q_OS_WIN
+    // Windows: QSS lives next to the executable
     QString qssPath = QDir(QCoreApplication::applicationDirPath()).filePath("dark_theme.qss");
+#else
+    // macOS: QSS is embedded in the bundle at Contents/Resources/
+    QString qssPath = QDir(QCoreApplication::applicationDirPath() + "/../Resources").filePath("dark_theme.qss");
+    // Fallback: same dir as executable (dev builds without bundle)
+    if (!QFile::exists(qssPath))
+        qssPath = QDir(QCoreApplication::applicationDirPath()).filePath("dark_theme.qss");
+#endif
     
     QFile file(qssPath);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {

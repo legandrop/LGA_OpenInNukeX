@@ -1,5 +1,17 @@
 {
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/QtClient/build/compile_commands.json",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.intelliSenseEngine": "default",
+    "cmake.sourceDirectory": "${workspaceFolder}/QtClient",
+    "cmake.buildDirectory": "${workspaceFolder}/QtClient/build",
+    "cmake.configureOnOpen": true,
     "files.associations": {
+        "*.h": "cpp",
+        "*.cpp": "cpp",
+        "*.ui": "xml",
+        "*.qrc": "xml",
+        "*.moc": "cpp",
         "xlocale": "cpp"
     }
 }
