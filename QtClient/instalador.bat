@@ -108,13 +108,18 @@ if exist "%INSTALLER_FILE%" (
     echo - Desinstalador completo incluido
     echo.
 
-    set /p "TEST_INSTALLER=Queres ejecutar el instalador ahora? (y/n): "
-    if /i "!TEST_INSTALLER!"=="y" (
-        start "" "%INSTALLER_FILE%"
+    if /i "%LGA_SKIP_INSTALLER_RUN_PROMPT%"=="1" (
+        echo [INFO] Se omite la ejecucion interactiva del instalador porque el release lo invoco en modo no interactivo.
+    ) else (
+        set /p "TEST_INSTALLER=Queres ejecutar el instalador ahora? (y/n): "
+        if /i "!TEST_INSTALLER!"=="y" (
+            start "" "%INSTALLER_FILE%"
+        )
     )
 ) else (
     echo [ERROR] El instalador no se genero correctamente.
     echo Verifica los logs de Inno Setup para mas detalles.
+    exit /b 1
 )
 
 exit /b 0

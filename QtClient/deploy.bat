@@ -6,6 +6,7 @@ set "RELEASE_DIR=%QTCLIENT_DIR%\release"
 set "DEPLOY_DIR=%RELEASE_DIR%\deploy"
 set "QT_DIR=C:\Qt\6.5.3\mingw_64"
 set "MINGW_DIR=C:\Qt\Tools\mingw1120_64"
+set "SETUSERFTA_SOURCE=%QTCLIENT_DIR%\scripts\deploy\SetUserFTA.exe"
 
 echo ===============================================
 echo    LGA_OpenInNukeX
@@ -24,6 +25,12 @@ if not exist "%QT_DIR%\lib\cmake\Qt6\Qt6Config.cmake" (
 
 if not exist "%MINGW_DIR%\bin\mingw32-make.exe" (
     echo [ERROR] No se encontro mingw32-make.exe en: %MINGW_DIR%
+    exit /b 1
+)
+
+if not exist "%SETUSERFTA_SOURCE%" (
+    echo [ERROR] No se encontro SetUserFTA.exe en: %SETUSERFTA_SOURCE%
+    echo [ERROR] El deploy de release requiere este archivo para las asociaciones de .nk.
     exit /b 1
 )
 
@@ -118,13 +125,15 @@ echo Verificando SetUserFTA.exe (requerido para asociaciones de archivos)...
 if exist "SetUserFTA.exe" (
     echo SetUserFTA.exe ya existe en deploy\
 ) else (
-    if exist "%QTCLIENT_DIR%\scripts\deploy\SetUserFTA.exe" (
+    if exist "%SETUSERFTA_SOURCE%" (
         echo SetUserFTA.exe encontrado en scripts\deploy\, copiando...
-        copy /Y "%QTCLIENT_DIR%\scripts\deploy\SetUserFTA.exe" "SetUserFTA.exe" >nul
+        copy /Y "%SETUSERFTA_SOURCE%" "SetUserFTA.exe" >nul
         if exist "SetUserFTA.exe" (
             echo SetUserFTA.exe copiado exitosamente
         ) else (
             echo ERROR: No se pudo copiar SetUserFTA.exe
+            popd >nul
+            exit /b 1
         )
     ) else (
         echo ERROR: SetUserFTA.exe no encontrado
@@ -134,6 +143,8 @@ if exist "SetUserFTA.exe" (
         echo 2. Descarga SetUserFTA.exe
         echo 3. Copia SetUserFTA.exe a QtClient\scripts\deploy\ o directamente a QtClient\release\deploy\
         echo.
+        popd >nul
+        exit /b 1
     )
 )
 
@@ -155,6 +166,8 @@ if exist "SetUserFTA.exe" (
     echo SetUserFTA.exe: OK
 ) else (
     echo SetUserFTA.exe: FALTA (requerido para asociaciones)
+    popd >nul
+    exit /b 1
 )
 
 if exist "dark_theme.qss" (
@@ -172,4 +185,3 @@ echo ===============================================
 echo.
 
 exit /b 0
-
