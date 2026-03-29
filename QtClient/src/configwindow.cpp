@@ -646,34 +646,15 @@ bool ConfigWindow::setFileAssociation()
     
     Logger::logInfo(QString("Buscando SetUserFTA en: %1").arg(setUserFtaPath));
     
-    if (QFile::exists(setUserFtaPath)) {
-        Logger::logInfo("SetUserFTA encontrado, usándolo para la asociación");
-        bool result = executeCommand(setUserFtaPath, QStringList() << ".nk" << progId);
-        Logger::logInfo(QString("SetUserFTA resultado: %1").arg(result ? "exitoso" : "falló"));
-        return result;
-    } else {
-        Logger::logInfo("SetUserFTA no encontrado, usando asociación directa en registro");
-        
-        // CAMBIO CRÍTICO: Usar PowerShell en lugar de cmd para mejor compatibilidad
-        QString powershellCommand = QString(
-            "New-Item -Path 'HKCU:\\Software\\Classes\\.nk' -Force | Out-Null; "
-            "Set-ItemProperty -Path 'HKCU:\\Software\\Classes\\.nk' -Name '(Default)' -Value '%1'"
-        ).arg(progId);
-        
-        Logger::logInfo("Usando PowerShell para configurar asociación");
-        bool result = executeCommand("powershell.exe", QStringList() << "-Command" << powershellCommand);
-        
-        if (!result) {
-            Logger::logInfo("PowerShell falló, intentando con reg directo como fallback");
-            QStringList args;
-            args << "add" << "HKEY_CURRENT_USER\\Software\\Classes\\.nk" 
-                 << "/ve" << "/t" << "REG_SZ" << "/d" << progId << "/f";
-            result = executeCommand("reg", args);
-        }
-        
-        Logger::logInfo(QString("Asociación directa resultado: %1").arg(result ? "exitoso" : "falló"));
-        return result;
+    if (!QFile::exists(setUserFtaPath)) {
+        Logger::logInfo("ERROR: SetUserFTA.exe no encontrado; la asociacion de .nk no puede completarse sin este archivo");
+        return false;
     }
+
+    Logger::logInfo("SetUserFTA encontrado, usándolo para la asociación");
+    bool result = executeCommand(setUserFtaPath, QStringList() << ".nk" << progId);
+    Logger::logInfo(QString("SetUserFTA resultado: %1").arg(result ? "exitoso" : "falló"));
+    return result;
 }
 
 #endif // Q_OS_WIN

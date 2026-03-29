@@ -61,7 +61,7 @@ Windows 10/11 tiene protecciones que detectan cuando una aplicación intenta cam
 ### Archivos importantes (Windows)
 
 - `LGA_OpenInNukeX.exe` — Aplicación principal
-- `SetUserFTA.exe` — Herramienta para asociaciones (opcional pero recomendada)
+- `SetUserFTA.exe` — Herramienta requerida para asociaciones funcionales en Windows
 - `app_icon.ico` — Icono de la aplicación
 - `scripts\limpiar_registro.bat` — Script de limpieza
 

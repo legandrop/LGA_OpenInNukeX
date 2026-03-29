@@ -10,7 +10,7 @@ Cliente Qt/C++ multiplataforma para abrir archivos .nk en NukeX. Disponible para
 - **Multiplataforma**: mismo codebase para Windows y macOS con `#ifdef Q_OS_WIN` guards
 - **Sin ventana de consola**: aplicación GUI pura en ambas plataformas
 - **Apertura inteligente**: si NukeX está corriendo envía el archivo vía TCP; si no, lanza nueva instancia
-- **Asociación de archivos**: Windows usa registro (`HKCU`) + SetUserFTA opcional; macOS usa `lsregister` + `duti` opcional
+- **Asociación de archivos**: Windows requiere `SetUserFTA.exe` para dejar operativa la asociación `.nk`; macOS usa `lsregister` + `duti` opcional
 - **Configuración en AppData/Application Support**: archivos de configuración y logs en ubicación estándar del sistema
 - **Conexión TCP async**: conecta al servidor NukeX en puerto 54325 con timeout; sin bloqueos (`readyRead` signal)
 - **Fallback automático**: si no hay instancia activa de NukeX, lanza el ejecutable configurado con `--nukex`
@@ -97,8 +97,8 @@ Los scripts crean un AGL.framework dummy (necesario para linkar Qt 6.x en macOS 
 
 ### Windows
 - Registra ProgID `LGA.NukeScript.1` en `HKCU\Software\Classes`
-- Usa SetUserFTA si está disponible (evita UserChoice Protection de Windows 10/11)
-- Fallback a PowerShell/reg si SetUserFTA no está presente
+- Requiere `SetUserFTA.exe` para aplicar la asociación `.nk` evitando UserChoice Protection de Windows 10/11
+- Si `SetUserFTA.exe` falta, la asociación no debe considerarse funcionalmente completa
 - Llama `SHChangeNotify()` para actualizar el explorador inmediatamente
 
 ### macOS
