@@ -74,7 +74,7 @@ Abre la ventana de configuración con:
 Requiere Qt 6.x con MinGW y CMake.
 
 ```bat
-cd scripts
+cd QtClient
 compilar.bat    # Debug
 deploy.bat      # Release + deploy portable
 instalador.bat  # Genera instalador .exe con Inno Setup
