@@ -116,7 +116,7 @@ if not exist "%SETUSERFTA%" (
     echo SOLUCION:
     echo 1. Descarga SetUserFTA.exe desde:
     echo    https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-echo 2. Copia SetUserFTA.exe a: resources\ o release\deploy\
+    echo 2. Copia SetUserFTA.exe a: resources\ o release\deploy\
     pause
     exit /b 1
 )
