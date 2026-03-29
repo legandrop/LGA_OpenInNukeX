@@ -1,7 +1,7 @@
 <p>
   <img src="Doc_Media/image1.png" alt="LGA OpenInNukeX logo" width="56" height="56" align="left" style="margin-right:8px;">
   <span style="font-size:1.6em;font-weight:700;line-height:1;">LGA OPENINNUKEX</span><br>
-  <span style="font-style:italic;line-height:1;">Lega | v1.65</span><br>
+  <span style="font-style:italic;line-height:1;">Lega | v1.66</span><br>
 </p>
 <br clear="left">
 

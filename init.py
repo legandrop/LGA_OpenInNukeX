@@ -1,7 +1,7 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.65 | Lega
+  LGA_OpenInNukeX v1.66 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 ______________________________________________________________________________________
 
