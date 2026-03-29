@@ -5,6 +5,29 @@
 </p>
 <br clear="left">
 
+
+Al instalar Nuke, hacer doble click en un archivo `.nk` siempre abre una nueva instancia de Nuke (no NukeX). 
+Aunque se puede redirigir para usar NukeX, igual se crea una nueva instancia cada vez, acumulando varias ventanas abiertas.
+
+`LGA_OpenInNukeX` soluciona esto.
+Permite abrir archivos `.nk` directamente en **NukeX** desde el explorador de archivos:<br>
+&nbsp;&nbsp;&nbsp;•	Si ya hay una instancia de **NukeX** abierta → abre el script ahí<br>
+&nbsp;&nbsp;&nbsp;•	Si no hay ninguna → abre una nueva instancia de **NukeX** <br>
+
+<br>
+
+Es una aplicación de dos partes:<br>
+&nbsp;&nbsp;&nbsp;• **Servidor en NukeX**: corre desde [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py), escucha por TCP en el puerto `54325` y recibe comandos externos.<br>
+&nbsp;&nbsp;&nbsp;• **Cliente Qt/C++**: corre fuera de Nuke, administra la asociación de archivos `.nk`, detecta la ruta configurada de NukeX y decide si enviar el archivo a una instancia ya abierta o lanzar una nueva.<br><br>
+
+La lógica de apertura es esta:<br>
+&nbsp;&nbsp;&nbsp;1. Si ya hay una instancia de **NukeX** abierta, el cliente envía el `.nk` vía TCP a esa sesión activa.<br>
+&nbsp;&nbsp;&nbsp;2. Si no hay una instancia abierta, el cliente lanza el ejecutable de **NukeX** configurado en la sección **Preferred Nuke Version**.
+<br>
+
+Solo funciona con **NukeX** y no con otras variantes de Nuke. El servidor en `init.py` verifica esto antes de iniciar.
+![](Doc_Media/image2.png)
+
 ## Instalación
 
 - Copiar la carpeta **LGA_OpenInNukeX** a **%USERPROFILE%/.nuke** en Windows o a **~/.nuke** en macOS.<br> Debería quedar así:
@@ -25,23 +48,6 @@
 - **macOS**: copiar `LGA_OpenInNukeX.app` a `/Applications`. Después abrir la aplicación para entrar a la configuración.
 
 <br><br>
-
-## ¿Qué hace?
-
-`LGA_OpenInNukeX` es una aplicación de dos partes para abrir archivos `.nk` directamente en **NukeX** desde el explorador de archivos.
-
-- **Servidor en NukeX**: corre desde [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py), escucha por TCP en el puerto `54325` y recibe comandos externos.
-- **Cliente Qt/C++**: corre fuera de Nuke, administra la asociación de archivos `.nk`, detecta la ruta configurada de NukeX y decide si enviar el archivo a una instancia ya abierta o lanzar una nueva.
-
-La lógica de apertura es esta:
-
-1. Si ya hay una instancia de **NukeX** abierta, el cliente envía el `.nk` vía TCP a esa sesión activa.
-2. Si no hay una instancia abierta, el cliente lanza el ejecutable de **NukeX** configurado en la sección **Preferred Nuke Version**.
-
-Solo funciona con **NukeX** y no con otras variantes de Nuke. El servidor en `init.py` verifica esto antes de iniciar.
-
-
-![](Doc_Media/image2.png)
 
 
 ## Configuración
