@@ -33,7 +33,7 @@ QtClient/
 │   ├── LGA_OpenInNukeX.icns     # Icono app (macOS)
 │   ├── app_icon.ico             # Icono para archivos .nk (Windows)
 │   ├── app_icon.png             # Icono fuente
-│   ├── app.rc                   # Recursos Windows (icono, versión)
+│   ├── ../LGA_OpenInNukeX.rc    # Recursos Windows usados por CMake (icono, versión)
 │   └── dark_theme.qss           # Tema oscuro
 ├── cmake/
 │   └── Info.plist.in            # Bundle macOS (CFBundleDocumentTypes, UTI .nk)
