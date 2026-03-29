@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 deploy/
 .DS_Store
+.cursorrules
+.vscode/
+.gitignore
