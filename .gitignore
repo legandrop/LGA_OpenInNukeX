@@ -1,10 +1,10 @@
 release/
 build/
 debug/
-*.exe
 __pycache__/
 *.pyc
 deploy/
 .DS_Store
 .cursorrules
 .vscode/
+installer_output/

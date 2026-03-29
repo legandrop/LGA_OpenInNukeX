@@ -105,7 +105,8 @@ echo ========================================
 echo  PASO 3: USANDO SETUSERFTA
 echo ========================================
 
-set "SETUSERFTA=%~dp0..\release\deploy\SetUserFTA.exe"
+set "SETUSERFTA=%~dp0..\resources\SetUserFTA.exe"
+if not exist "%SETUSERFTA%" set "SETUSERFTA=%~dp0..\release\deploy\SetUserFTA.exe"
 
 REM Verificar que SetUserFTA existe
 if not exist "%SETUSERFTA%" (
@@ -115,7 +116,7 @@ if not exist "%SETUSERFTA%" (
     echo SOLUCION:
     echo 1. Descarga SetUserFTA.exe desde:
     echo    https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-    echo 2. Copia SetUserFTA.exe a: release\deploy\
+echo 2. Copia SetUserFTA.exe a: resources\ o release\deploy\
     pause
     exit /b 1
 )

@@ -6,7 +6,8 @@ set "RELEASE_DIR=%QTCLIENT_DIR%\release"
 set "DEPLOY_DIR=%RELEASE_DIR%\deploy"
 set "QT_DIR=C:\Qt\6.5.3\mingw_64"
 set "MINGW_DIR=C:\Qt\Tools\mingw1120_64"
-set "SETUSERFTA_SOURCE=%QTCLIENT_DIR%\scripts\deploy\SetUserFTA.exe"
+set "SETUSERFTA_SOURCE=%QTCLIENT_DIR%\resources\SetUserFTA.exe"
+set "SETUSERFTA_FALLBACK=%QTCLIENT_DIR%\scripts\deploy\SetUserFTA.exe"
 
 echo ===============================================
 echo    LGA_OpenInNukeX
@@ -29,9 +30,13 @@ if not exist "%MINGW_DIR%\bin\mingw32-make.exe" (
 )
 
 if not exist "%SETUSERFTA_SOURCE%" (
-    echo [ERROR] No se encontro SetUserFTA.exe en: %SETUSERFTA_SOURCE%
-    echo [ERROR] El deploy de release requiere este archivo para las asociaciones de .nk.
-    exit /b 1
+    if exist "%SETUSERFTA_FALLBACK%" (
+        set "SETUSERFTA_SOURCE=%SETUSERFTA_FALLBACK%"
+    ) else (
+        echo [ERROR] No se encontro SetUserFTA.exe en: %SETUSERFTA_SOURCE%
+        echo [ERROR] El deploy de release requiere este archivo para las asociaciones de .nk.
+        exit /b 1
+    )
 )
 
 set "PATH=%QT_DIR%\bin;%MINGW_DIR%\bin;%PATH%"
@@ -126,7 +131,7 @@ if exist "SetUserFTA.exe" (
     echo SetUserFTA.exe ya existe en deploy\
 ) else (
     if exist "%SETUSERFTA_SOURCE%" (
-        echo SetUserFTA.exe encontrado en scripts\deploy\, copiando...
+        echo SetUserFTA.exe encontrado en la ruta canonica, copiando...
         copy /Y "%SETUSERFTA_SOURCE%" "SetUserFTA.exe" >nul
         if exist "SetUserFTA.exe" (
             echo SetUserFTA.exe copiado exitosamente
@@ -141,7 +146,7 @@ if exist "SetUserFTA.exe" (
         echo INSTRUCCIONES PARA OBTENER SETUSERFTA:
         echo 1. Visita: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
         echo 2. Descarga SetUserFTA.exe
-        echo 3. Copia SetUserFTA.exe a QtClient\scripts\deploy\ o directamente a QtClient\release\deploy\
+        echo 3. Copia SetUserFTA.exe a QtClient\resources\ o directamente a QtClient\release\deploy\
         echo.
         popd >nul
         exit /b 1
