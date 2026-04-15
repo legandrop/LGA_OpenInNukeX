@@ -8,3 +8,5 @@ deploy/
 .cursorrules
 .vscode/
 installer_output/
+*.log
+logs/
