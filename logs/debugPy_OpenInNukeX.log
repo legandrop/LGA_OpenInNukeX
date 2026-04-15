@@ -1,0 +1,80 @@
+Fecha: 2026-04-15 00:06:09
+[0.000s] [init::<module>] === OpenInNukeX: NO ES NUKEX - SERVIDOR INACTIVO ===
+[0.000s] [init::<module>] Cleanup de logging registrado con atexit
+[1688.547s] [init::nuke_server] Conexión aceptada desde ('127.0.0.1', 60117)
+[1688.547s] [init::nuke_server] Creando thread para manejar cliente...
+[1688.551s] [init::handle_client] === NUEVA CONEXIÓN RECIBIDA ===
+[1688.551s] [init::handle_client] Thread: Thread-8 (handle_client)
+[1688.551s] [init::handle_client] Recibiendo datos del cliente...
+[1688.552s] [init::nuke_server] Thread cliente iniciado: Thread-8 (handle_client)
+[1688.552s] [init::nuke_server] Esperando conexiones entrantes...
+[1688.552s] [init::handle_client] Datos recibidos: 'ping'
+[1688.552s] [init::handle_client] Comando PING recibido
+[1688.552s] [init::handle_client] Respondiendo PONG (NukeX)
+[1688.552s] [init::handle_client] Cerrando conexión...
+[1688.552s] [init::handle_client] Conexión cerrada
+[1688.552s] [init::nuke_server] Conexión aceptada desde ('127.0.0.1', 60118)
+[1688.552s] [init::nuke_server] Creando thread para manejar cliente...
+[1688.553s] [init::handle_client] === NUEVA CONEXIÓN RECIBIDA ===
+[1688.553s] [init::handle_client] Thread: Thread-9 (handle_client)
+[1688.553s] [init::handle_client] Recibiendo datos del cliente...
+[1688.553s] [init::nuke_server] Thread cliente iniciado: Thread-9 (handle_client)
+[1688.553s] [init::nuke_server] Esperando conexiones entrantes...
+[1688.553s] [init::handle_client] Datos recibidos: 'run_script||T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk'
+[1688.553s] [init::handle_client] Procesando comando: 'run_script||T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk'
+[1688.553s] [init::handle_client] Comando parseado: 'run_script', Archivo: 'T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk'
+[1688.553s] [init::handle_client] Ejecutando script en main thread: T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk
+[1688.566s] [init::run_script_with_logging] === INICIANDO APERTURA DE SCRIPT ===
+[1688.566s] [init::run_script_with_logging] Filepath solicitado: T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk
+[1688.566s] [init::run_script_with_logging] --- SNAPSHOT ENTORNO PRE-OPERACIÓN ---
+[1688.566s] [init::run_script_with_logging]   Nuke version: 15.1v6
+[1688.566s] [init::run_script_with_logging]   NukeX: True, Studio: False
+[1688.566s] [init::run_script_with_logging]   Python: 3.10.10 (remotes/origin/foundry/v3.10.10:693bcebd65, Feb  7 2024, 11:52:25) [MSC v.1935 64 bit (AMD64)]
+[1688.566s] [init::run_script_with_logging]   Platform: win32
+[1688.566s] [init::run_script_with_logging]   PID: 77572
+[1688.566s] [init::run_script_with_logging]   Threads activos: 9
+[1688.566s] [init::run_script_with_logging]   Thread actual: MainThread
+[1688.566s] [init::run_script_with_logging]   Script actual: Root
+[1688.566s] [init::run_script_with_logging]   Frame range: 1-100
+[1688.566s] [init::run_script_with_logging]   Proyecto modificado: False
+[1688.566s] [init::run_script_with_logging]   Total nodos: 1
+[1688.566s] [init::run_script_with_logging]   Top nodos: [('Viewer', 1)]
+[1688.566s] [init::run_script_with_logging]   Memoria RSS: 1255.0 MB
+[1688.566s] [init::run_script_with_logging]   Memoria VMS: 2357.4 MB
+[1688.566s] [init::run_script_with_logging]   CPU%: 0.0
+[1688.566s] [init::run_script_with_logging] --- INFO ARCHIVO A ABRIR ---
+[1688.567s] [init::run_script_with_logging]   Archivo existe: True
+[1688.567s] [init::run_script_with_logging]   Tamaño: 900.8 KB
+[1688.567s] [init::run_script_with_logging]   Última modificación: 2026-04-14 22:01:35
+[1688.567s] [init::run_script_with_logging]   Path absoluto: T:\VFX-ERSO\000\ERSO_000_330\Comp\1_projects\ERSO_000_330_comp_v010.nk
+[1688.567s] [init::run_script_with_logging]   Path normalizado: T:\VFX-ERSO\000\ERSO_000_330\Comp\1_projects\ERSO_000_330_comp_v010.nk
+[1688.567s] [init::run_script_with_logging]   Es symlink: False
+[1688.567s] [init::run_script_with_logging] --- FASE 1: VERIFICAR ESTADO INICIAL ---
+[1688.567s] [init::run_script_with_logging] Script actual: Root
+[1688.567s] [init::run_script_with_logging] Proyecto modificado: False
+[1688.567s] [init::run_script_with_logging] --- FASE 2: CERRANDO SCRIPT ACTUAL ---
+[1688.852s] [init::run_script_with_logging] Estado post-cierre: modified=False, script=Root
+[1688.852s] [init::run_script_with_logging] Proyecto cerrado exitosamente
+[1688.852s] [init::run_script_with_logging] --- FASE 3: ABRIENDO NUEVO SCRIPT ---
+[1688.852s] [init::run_script_with_logging] Llamando nuke.scriptOpen('T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk')...
+[1690.325s] [init::run_script_with_logging] nuke.scriptOpen() completado sin excepción
+[1690.325s] [init::run_script_with_logging] --- SNAPSHOT ENTORNO POST-APERTURA ---
+[1690.326s] [init::run_script_with_logging]   Nuke version: 15.1v6
+[1690.326s] [init::run_script_with_logging]   NukeX: True, Studio: False
+[1690.326s] [init::run_script_with_logging]   Python: 3.10.10 (remotes/origin/foundry/v3.10.10:693bcebd65, Feb  7 2024, 11:52:25) [MSC v.1935 64 bit (AMD64)]
+[1690.326s] [init::run_script_with_logging]   Platform: win32
+[1690.326s] [init::run_script_with_logging]   PID: 77572
+[1690.326s] [init::run_script_with_logging]   Threads activos: 9
+[1690.326s] [init::run_script_with_logging]   Thread actual: MainThread
+[1690.326s] [init::run_script_with_logging]   Script actual: T:/VFX-ERSO/000/ERSO_000_330/Comp/1_projects/ERSO_000_330_comp_v010.nk
+[1690.326s] [init::run_script_with_logging]   Frame range: 1001-1199
+[1690.326s] [init::run_script_with_logging]   Proyecto modificado: False
+[1690.326s] [init::run_script_with_logging]   Total nodos: 290
+[1690.326s] [init::run_script_with_logging]   Top nodos: [('Dot', 39), ('Read', 27), ('Group', 19), ('Grade', 17), ('BackdropNode', 16)]
+[1690.326s] [init::run_script_with_logging]   Memoria RSS: 1451.8 MB
+[1690.326s] [init::run_script_with_logging]   Memoria VMS: 2540.8 MB
+[1690.326s] [init::run_script_with_logging]   CPU%: 0.0
+[1690.326s] [init::run_script_with_logging] --- FASE 4: ACTIVANDO VENTANA ---
+[1690.326s] [init::activate_nuke_window_with_logging] Obteniendo instancia de QApplication...
+[1690.345s] [init::activate_nuke_window_with_logging] QApplication encontrada, buscando ventana activa...
+[1690.345s] [init::activate_nuke_window_with_logging] No hay ventana activa, buscando ventana principal...

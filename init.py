@@ -1,7 +1,7 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.66 | Lega
+  LGA_OpenInNukeX v1.67 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 ______________________________________________________________________________________
 
@@ -14,128 +14,205 @@ import time
 import logging
 import queue
 from logging.handlers import QueueHandler, QueueListener
-from pathlib import Path
 import os
+import sys
+import traceback
 
-# Variable global para almacenar la conexion del socket
+# ---------------------------------------------------------------------------
+# Logging flags  (alineados al patron de LGA_ToolPack / Python-Startup)
+# ---------------------------------------------------------------------------
+DEBUG = True
+DEBUG_CONSOLE = False
+DEBUG_LOG = True
+
+# ---------------------------------------------------------------------------
+# Logging internals
+# ---------------------------------------------------------------------------
 current_conn = None
-
-# Variable global para trackear tiempo de inicio del script
 script_start_time = None
-
-# Listener global para logging asincrono
 debug_log_listener = None
+_logging_lock = threading.Lock()
+
+TOOL_NAME = "OpenInNukeX"
+LOG_FILENAME = f"debugPy_{TOOL_NAME}.log"
 
 
-# Formatter personalizado para incluir tiempo relativo
 class RelativeTimeFormatter(logging.Formatter):
     def format(self, record):
         global script_start_time
         if script_start_time is None:
             script_start_time = record.created
-
-        # Calcular tiempo relativo en segundos con 3 decimales (milisegundos)
         relative_time = record.created - script_start_time
         record.relative_time = f"{relative_time:.3f}s"
         return super().format(record)
 
 
-# Configurar logging para escribir en tiempo real a un archivo
+def _get_log_file_path():
+    return os.path.join(os.path.dirname(__file__), "logs", LOG_FILENAME)
+
+
 def setup_debug_logging():
-    """Configura el logging para debug que escribe en tiempo real a un archivo."""
+    """Configura logging asincrono a archivo con encabezado de fecha/hora."""
     global debug_log_listener
-    log_file_path = os.path.join(
-        os.path.dirname(__file__), "..", "logs", "debugPy_OpenInNukeX.log"
-    )
 
-    # Asegurar que el directorio de logs existe
-    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+    with _logging_lock:
+        log_file_path = _get_log_file_path()
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
 
-    # Limpiar el archivo de log al iniciar el script
-    if os.path.exists(log_file_path):
         try:
             with open(log_file_path, "w", encoding="utf-8") as f:
-                f.write("")  # Limpiar el contenido del archivo
+                f.write(f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         except Exception as e:
-            print(f"Warning: No se pudo limpiar el archivo de log: {e}")
+            print(f"Warning: No se pudo inicializar el archivo de log: {e}")
 
-    # Configurar el logger - SOLO PARA ARCHIVO, NO CONSOLA
-    logger = logging.getLogger("openinnukex_logger")
-    logger.setLevel(logging.DEBUG)
+        logger = logging.getLogger(f"{TOOL_NAME.lower()}_logger")
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
 
-    # IMPORTANTE: Desactivar la propagación al logger root (que va a consola)
-    logger.propagate = False
+        if logger.handlers:
+            logger.handlers.clear()
 
-    # Limpiar handlers existentes para evitar duplicados
-    if logger.handlers:
-        logger.handlers.clear()
+        file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(
+            RelativeTimeFormatter(
+                "[%(relative_time)s] [%(module)s::%(funcName)s] %(message)s"
+            )
+        )
 
-    # Crear handler para archivo con encoding UTF-8
-    file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-    file_handler.setLevel(logging.DEBUG)
+        log_queue = queue.Queue()
+        queue_handler = QueueHandler(log_queue)
+        queue_handler.setLevel(logging.DEBUG)
+        logger.addHandler(queue_handler)
 
-    # Usar formatter personalizado con tiempo relativo
-    formatter = RelativeTimeFormatter("[%(relative_time)s] %(message)s")
-    file_handler.setFormatter(formatter)
+        if debug_log_listener:
+            try:
+                debug_log_listener.stop()
+            except Exception:
+                pass
 
-    # Usar logging asincrono para reducir bloqueos
-    log_queue = queue.Queue()
-    queue_handler = QueueHandler(log_queue)
-    queue_handler.setLevel(logging.DEBUG)
-    logger.addHandler(queue_handler)
+        debug_log_listener = QueueListener(
+            log_queue, file_handler, respect_handler_level=True
+        )
+        debug_log_listener.daemon = True
+        debug_log_listener.start()
 
-    # Detener listener anterior si existe
-    if debug_log_listener:
-        try:
-            debug_log_listener.stop()
-        except Exception:
-            pass
-
-    debug_log_listener = QueueListener(
-        log_queue, file_handler, respect_handler_level=True
-    )
-    debug_log_listener.daemon = True
-    debug_log_listener.start()
-
-    return logger
+        return logger
 
 
-# Inicializar el logger de debug
 debug_logger = setup_debug_logging()
 
 
-# Variable global para activar o desactivar los prints
-DEBUG = True
-DEBUG_PRINT_CONSOLE = os.getenv("LGA_DEBUG_CONSOLE", "0") == "1"
-
-
-def debug_print(*message):
+def debug_print(*message, level="info"):
+    """Logging con soporte de niveles, archivo y consola opcionales."""
     global script_start_time
-    if DEBUG:
-        # Inicializar tiempo de inicio si no está establecido
+
+    if not DEBUG:
+        return
+
+    msg = " ".join(str(arg) for arg in message)
+
+    if DEBUG_LOG:
         if script_start_time is None:
             script_start_time = time.time()
+        log_method = getattr(debug_logger, level, debug_logger.info)
+        try:
+            log_method(msg, stacklevel=2)
+        except TypeError:
+            log_method(msg)
 
-        # Crear el mensaje uniendo todos los argumentos
-        msg = " ".join(str(arg) for arg in message)
-
-        # Calcular tiempo relativo para el print en consola
+    if DEBUG_CONSOLE:
+        if script_start_time is None:
+            script_start_time = time.time()
         relative_time = time.time() - script_start_time
-        timestamped_msg = f"[{relative_time:.3f}s] {msg}"
+        print(f"[{relative_time:.3f}s] {msg}")
 
-        if DEBUG_PRINT_CONSOLE:
-            print(timestamped_msg)  # Print con timestamp
-        debug_logger.info(msg)  # El logger ya incluye el timestamp en el archivo
+
+def _collect_nuke_environment():
+    """Captura un snapshot del entorno de Nuke para diagnosticar crashes."""
+    info = []
+    try:
+        info.append(f"Nuke version: {nuke.env.get('NukeVersionString', '?')}")
+        info.append(
+            f"NukeX: {nuke.env.get('nukex', '?')}, Studio: {nuke.env.get('studio', '?')}"
+        )
+        info.append(f"Python: {sys.version}")
+        info.append(f"Platform: {sys.platform}")
+        info.append(f"PID: {os.getpid()}")
+        info.append(f"Threads activos: {threading.active_count()}")
+        info.append(f"Thread actual: {threading.current_thread().name}")
+    except Exception as e:
+        info.append(f"Error capturando entorno base: {e}")
+
+    try:
+        root = nuke.root()
+        info.append(f"Script actual: {root.name()}")
+        info.append(f"Frame range: {root.firstFrame()}-{root.lastFrame()}")
+        info.append(f"Proyecto modificado: {root.modified()}")
+    except Exception as e:
+        info.append(f"Error capturando info de root: {e}")
+
+    try:
+        all_nodes = nuke.allNodes()
+        info.append(f"Total nodos: {len(all_nodes)}")
+        node_types = {}
+        for n in all_nodes:
+            cls = n.Class()
+            node_types[cls] = node_types.get(cls, 0) + 1
+        top5 = sorted(node_types.items(), key=lambda x: -x[1])[:5]
+        info.append(f"Top nodos: {top5}")
+    except Exception as e:
+        info.append(f"Error capturando nodos: {e}")
+
+    try:
+        import psutil
+
+        proc = psutil.Process(os.getpid())
+        mem = proc.memory_info()
+        info.append(f"Memoria RSS: {mem.rss / (1024*1024):.1f} MB")
+        info.append(f"Memoria VMS: {mem.vms / (1024*1024):.1f} MB")
+        info.append(f"CPU%: {proc.cpu_percent(interval=0)}")
+    except ImportError:
+        pass
+    except Exception as e:
+        info.append(f"Error capturando memoria: {e}")
+
+    return info
+
+
+def _log_file_info(filepath):
+    """Loguea metadata del archivo que se va a abrir."""
+    info = []
+    try:
+        if os.path.exists(filepath):
+            stat = os.stat(filepath)
+            info.append(f"Archivo existe: True")
+            info.append(f"Tamaño: {stat.st_size / 1024:.1f} KB")
+            info.append(
+                f"Última modificación: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stat.st_mtime))}"
+            )
+            info.append(f"Path absoluto: {os.path.abspath(filepath)}")
+            info.append(f"Path normalizado: {os.path.normpath(filepath)}")
+            info.append(f"Es symlink: {os.path.islink(filepath)}")
+        else:
+            info.append(f"Archivo existe: FALSE - {filepath}")
+    except Exception as e:
+        info.append(f"Error capturando info del archivo: {e}")
+    return info
 
 
 if nuke.env["nukex"] and not nuke.env["studio"]:
     debug_print("=== OpenInNukeX: DETECTADO NUKEX - INICIANDO SERVIDOR ===")
     debug_print(f"Versión de Nuke: {nuke.env['NukeVersionString']}")
     debug_print(f"NukeX: {nuke.env['nukex']}, Studio: {nuke.env['studio']}")
+    debug_print(f"Python: {sys.version}")
+    debug_print(f"PID: {os.getpid()}")
+    debug_print(f"Log file: {_get_log_file_path()}")
     print("Este es NukeX, ejecutando el script.")
 
     def handle_client(conn):
         debug_print("=== NUEVA CONEXIÓN RECIBIDA ===")
+        debug_print(f"Thread: {threading.current_thread().name}")
         with conn:
             try:
                 debug_print("Recibiendo datos del cliente...")
@@ -143,7 +220,7 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                 debug_print(f"Datos recibidos: '{data}'")
 
                 if data:
-                    if data == "ping":  # Agregar manejo de ping
+                    if data == "ping":
                         debug_print("Comando PING recibido")
                         if not nuke.env["studio"]:
                             debug_print("Respondiendo PONG (NukeX)")
@@ -152,11 +229,9 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                             debug_print("PING desde NukeStudio - no respondiendo")
                             print("Received ping from NukeStudio, not responding.")
                     else:
-                        debug_print(f"Procesando comando complejo: '{data}'")
+                        debug_print(f"Procesando comando: '{data}'")
                         try:
-                            command, filepath = data.split(
-                                "||"
-                            )  # Separa el comando de la ruta del archivo
+                            command, filepath = data.split("||")
                             debug_print(
                                 f"Comando parseado: '{command}', Archivo: '{filepath}'"
                             )
@@ -173,77 +248,113 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                                 )
                                 response = "Script executed successfully\n"
                             else:
-                                debug_print(f"Comando desconocido: '{command}'")
+                                debug_print(
+                                    f"Comando desconocido: '{command}'", level="warning"
+                                )
                                 response = f"Received command: {data}\n"
                         except ValueError as parse_error:
-                            debug_print(f"ERROR parseando comando: {parse_error}")
+                            debug_print(
+                                f"ERROR parseando comando: {parse_error}", level="error"
+                            )
                             response = f"Error parsing command: {data}\n"
 
                         debug_print("Enviando respuesta al cliente...")
                         conn.sendall(response.encode())
                         debug_print("Respuesta enviada exitosamente")
             except Exception as e:
-                debug_print(f"ERROR CRÍTICO en handle_client: {str(e)}")
-                import traceback
-
-                debug_print(f"Traceback completo: {traceback.format_exc()}")
+                debug_print(f"ERROR CRÍTICO en handle_client: {e}", level="error")
+                debug_print(
+                    f"Traceback completo: {traceback.format_exc()}", level="error"
+                )
                 try:
                     response = f"Error: {str(e)}\n"
                     conn.sendall(response.encode())
                 except Exception as send_error:
-                    debug_print(f"ERROR enviando respuesta de error: {send_error}")
+                    debug_print(
+                        f"ERROR enviando respuesta de error: {send_error}",
+                        level="error",
+                    )
             finally:
                 debug_print("Cerrando conexión...")
                 conn.close()
                 debug_print("Conexión cerrada")
 
+    def _flush_log():
+        """Fuerza el flush del log para que quede escrito antes de operaciones peligrosas."""
+        try:
+            logger = logging.getLogger(f"{TOOL_NAME.lower()}_logger")
+            for h in logger.handlers:
+                h.flush()
+        except Exception:
+            pass
+
     def run_script_with_logging(filepath):
-        debug_print(f"=== INICIANDO APERTURA DE SCRIPT: {filepath} ===")
+        debug_print(f"=== INICIANDO APERTURA DE SCRIPT ===")
+        debug_print(f"Filepath solicitado: {filepath}")
+
+        # --- Snapshot del entorno ANTES de tocar nada ---
+        debug_print("--- SNAPSHOT ENTORNO PRE-OPERACIÓN ---")
+        for line in _collect_nuke_environment():
+            debug_print(f"  {line}")
+
+        debug_print("--- INFO ARCHIVO A ABRIR ---")
+        for line in _log_file_info(filepath):
+            debug_print(f"  {line}")
 
         try:
-            # Verificar estado inicial
-            debug_print("Verificando estado inicial de Nuke...")
+            debug_print("--- FASE 1: VERIFICAR ESTADO INICIAL ---")
             initial_modified = nuke.root().modified()
-            debug_print(f"Proyecto modificado inicialmente: {initial_modified}")
+            initial_script = nuke.root().name()
+            debug_print(f"Script actual: {initial_script}")
+            debug_print(f"Proyecto modificado: {initial_modified}")
 
-            # Intentar cerrar script
-            debug_print("Cerrando script actual...")
+            debug_print("--- FASE 2: CERRANDO SCRIPT ACTUAL ---")
+            _flush_log()
             nuke.scriptClose()
 
-            # Verificar cierre
             after_close_modified = nuke.root().modified()
-            debug_print(f"Estado después del cierre: {after_close_modified}")
+            after_close_script = nuke.root().name()
+            debug_print(
+                f"Estado post-cierre: modified={after_close_modified}, script={after_close_script}"
+            )
 
-            # Verificar si el cierre fue exitoso
             if nuke.root().modified() == initial_modified and initial_modified:
                 debug_print(
-                    "CIERRE CANCELADO POR EL USUARIO - proyecto sigue modificado"
+                    "CIERRE CANCELADO POR EL USUARIO - proyecto sigue modificado",
+                    level="warning",
                 )
                 return False
             else:
                 debug_print("Proyecto cerrado exitosamente")
 
-            # Abrir nuevo script
-            debug_print(f"Abriendo script: {filepath}")
-            nuke.scriptOpen(filepath)  # Abre el nuevo archivo .nk
-            debug_print("Script abierto exitosamente")
+            debug_print("--- FASE 3: ABRIENDO NUEVO SCRIPT ---")
+            debug_print(f"Llamando nuke.scriptOpen('{filepath}')...")
+            _flush_log()
+            nuke.scriptOpen(filepath)
+            debug_print("nuke.scriptOpen() completado sin excepción")
 
-            # Activar ventana con logging detallado
-            debug_print("Activando ventana de Nuke...")
+            debug_print("--- SNAPSHOT ENTORNO POST-APERTURA ---")
+            for line in _collect_nuke_environment():
+                debug_print(f"  {line}")
+
+            debug_print("--- FASE 4: ACTIVANDO VENTANA ---")
             activate_nuke_window_with_logging()
 
             debug_print("=== SCRIPT ABIERTO EXITOSAMENTE ===")
             return True
 
         except Exception as e:
-            debug_print(f"ERROR CRÍTICO en run_script_with_logging: {e}")
-            import traceback
-
-            debug_print(f"Traceback completo: {traceback.format_exc()}")
-            raise  # Re-lanzar para que se capture arriba
+            debug_print(f"ERROR CRÍTICO en run_script_with_logging: {e}", level="error")
+            debug_print(f"Traceback completo: {traceback.format_exc()}", level="error")
+            debug_print("--- SNAPSHOT ENTORNO POST-ERROR ---", level="error")
+            try:
+                for line in _collect_nuke_environment():
+                    debug_print(f"  {line}", level="error")
+            except Exception:
+                debug_print("No se pudo capturar entorno post-error", level="error")
+            raise
 
     def activate_nuke_window_with_logging():
-        """Activación de ventana con logging detallado"""
         try:
             debug_print("Obteniendo instancia de QApplication...")
             from LGA_QtAdapter_OpenInNukeX import QApplication
@@ -266,7 +377,7 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                         if widget.isWindow() and widget.isVisible():
                             main_window = widget
                             debug_print(
-                                f"Posible ventana principal encontrada: {widget.objectName() if hasattr(widget, 'objectName') else 'Unknown'}"
+                                f"Ventana encontrada: {widget.objectName() if hasattr(widget, 'objectName') else 'Unknown'}"
                             )
                             break
 
@@ -277,19 +388,20 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                         debug_print("Ventana principal activada exitosamente")
                     else:
                         debug_print(
-                            "WARNING: No se pudo encontrar una ventana de Nuke para activar"
+                            "No se pudo encontrar ventana de Nuke para activar",
+                            level="warning",
                         )
             else:
-                debug_print("WARNING: No se pudo obtener la instancia de QApplication")
+                debug_print(
+                    "No se pudo obtener la instancia de QApplication", level="warning"
+                )
 
         except Exception as e:
-            debug_print(f"ERROR en activación de ventana: {e}")
-            import traceback
+            debug_print(f"ERROR en activación de ventana: {e}", level="error")
+            debug_print(
+                f"Traceback activación ventana: {traceback.format_exc()}", level="error"
+            )
 
-            debug_print(f"Traceback activación ventana: {traceback.format_exc()}")
-            # No relanzar - permitir que el script se abra aunque falle la activación
-
-    # Configuracion y lanzamiento del servidor
     def nuke_server(port=54325):
         debug_print(f"=== INICIANDO SERVIDOR OpenInNukeX EN PUERTO {port} ===")
         host = "localhost"
@@ -320,18 +432,16 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                 debug_print(f"Thread cliente iniciado: {client_thread.name}")
 
         except socket.error as e:
-            debug_print(f"ERROR de socket al iniciar servidor en puerto {port}: {e}")
+            debug_print(f"ERROR de socket en puerto {port}: {e}", level="error")
             print(f"Error al vincular al puerto {port}: {e}")
             s.close()
             return
         except Exception as e:
-            debug_print(f"ERROR CRÍTICO al iniciar servidor: {e}")
-            import traceback
-
-            debug_print(f"Traceback servidor: {traceback.format_exc()}")
+            debug_print(f"ERROR CRÍTICO al iniciar servidor: {e}", level="error")
+            debug_print(f"Traceback servidor: {traceback.format_exc()}", level="error")
             try:
                 s.close()
-            except:
+            except Exception:
                 pass
             return
 
@@ -346,27 +456,24 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
 else:
     debug_print("=== OpenInNukeX: NO ES NUKEX - SERVIDOR INACTIVO ===")
     print("OpenInNukeX inactive. This is not NukeX.")
-    pass
 
 
-# Función para cleanup del logging al salir (si es necesario)
 def cleanup_logging():
-    """Limpia el listener de logging al terminar"""
     global debug_log_listener
-    if debug_log_listener:
-        try:
-            debug_print("Deteniendo listener de logging...")
-            debug_log_listener.stop()
-            debug_print("Listener de logging detenido")
-        except Exception as e:
-            debug_print(f"Error deteniendo listener: {e}")
+    if not debug_log_listener:
+        return
+    try:
+        debug_log_listener.stop()
+    except Exception:
+        pass
+    finally:
+        debug_log_listener = None
 
 
-# Registrar cleanup si es posible
 try:
     import atexit
 
     atexit.register(cleanup_logging)
     debug_print("Cleanup de logging registrado con atexit")
 except Exception as e:
-    debug_print(f"No se pudo registrar cleanup: {e}")
+    debug_print(f"No se pudo registrar cleanup: {e}", level="warning")
