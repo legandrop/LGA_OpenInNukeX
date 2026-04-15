@@ -31,6 +31,7 @@ DEBUG_LOG = True
 current_conn = None
 script_start_time = None
 debug_log_listener = None
+_debug_file_handler = None
 _logging_lock = threading.Lock()
 
 TOOL_NAME = "OpenInNukeX"
@@ -51,9 +52,30 @@ def _get_log_file_path():
     return os.path.join(os.path.dirname(__file__), "logs", LOG_FILENAME)
 
 
+def _reset_log():
+    """Vacía el archivo de log y resetea el timestamp relativo para empezar de cero."""
+    global script_start_time
+    script_start_time = None
+    try:
+        log_file_path = _get_log_file_path()
+        if _debug_file_handler:
+            _debug_file_handler.flush()
+            _debug_file_handler.stream.close()
+            _debug_file_handler.stream = open(log_file_path, "w", encoding="utf-8")
+            _debug_file_handler.stream.write(
+                f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            )
+            _debug_file_handler.stream.flush()
+        else:
+            with open(log_file_path, "w", encoding="utf-8") as f:
+                f.write(f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    except Exception:
+        pass
+
+
 def setup_debug_logging():
     """Configura logging asincrono a archivo con encabezado de fecha/hora."""
-    global debug_log_listener
+    global debug_log_listener, _debug_file_handler
 
     with _logging_lock:
         log_file_path = _get_log_file_path()
@@ -72,9 +94,9 @@ def setup_debug_logging():
         if logger.handlers:
             logger.handlers.clear()
 
-        file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(
+        _debug_file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+        _debug_file_handler.setLevel(logging.DEBUG)
+        _debug_file_handler.setFormatter(
             RelativeTimeFormatter(
                 "[%(relative_time)s] [%(module)s::%(funcName)s] %(message)s"
             )
@@ -92,7 +114,7 @@ def setup_debug_logging():
                 pass
 
         debug_log_listener = QueueListener(
-            log_queue, file_handler, respect_handler_level=True
+            log_queue, _debug_file_handler, respect_handler_level=True
         )
         debug_log_listener.daemon = True
         debug_log_listener.start()
@@ -177,6 +199,54 @@ def _collect_nuke_environment():
     except Exception as e:
         info.append(f"Error capturando memoria: {e}")
 
+    return info
+
+
+def _collect_nuke_callbacks():
+    """Captura callbacks registrados en Nuke que podrían ejecutarse post-apertura."""
+    info = []
+    try:
+        callback_types = [
+            "onScriptLoad", "onScriptSave", "onScriptClose",
+            "onCreate", "onDestroy", "onUserCreate",
+            "knobChanged", "updateUI", "autolabel",
+        ]
+        for cb_name in callback_types:
+            try:
+                cbs = nuke.callbacks.get(cb_name, [])
+                if cbs:
+                    for cb_func, cb_args, cb_kwargs, cb_node_class in cbs:
+                        func_name = getattr(cb_func, "__name__", str(cb_func))
+                        func_module = getattr(cb_func, "__module__", "?")
+                        info.append(
+                            f"{cb_name}: {func_module}.{func_name} "
+                            f"(nodeClass={cb_node_class})"
+                        )
+            except Exception as e:
+                info.append(f"{cb_name}: error enumerando - {e}")
+    except AttributeError:
+        try:
+            for attr in ["onScriptLoads", "onCreateNodes", "onDestroys",
+                         "onScriptCloses", "onScriptSaves", "knobChangeds",
+                         "updateUIs", "autolabels", "onUserCreates"]:
+                cb_list = getattr(nuke, attr, None)
+                if cb_list:
+                    info.append(f"{attr}: {len(cb_list)} callback(s) registrado(s)")
+                    for cb_entry in cb_list:
+                        cb_func = cb_entry[0] if isinstance(cb_entry, tuple) else cb_entry
+                        func_name = getattr(cb_func, "__name__", str(cb_func))
+                        func_module = getattr(cb_func, "__module__", "?")
+                        node_class = cb_entry[2] if isinstance(cb_entry, tuple) and len(cb_entry) > 2 else "*"
+                        info.append(
+                            f"  -> {func_module}.{func_name} (nodeClass={node_class})"
+                        )
+        except Exception as e:
+            info.append(f"Error enumerando callbacks (fallback): {e}")
+    except Exception as e:
+        info.append(f"Error capturando callbacks: {e}")
+
+    if not info:
+        info.append("No se detectaron callbacks registrados (o API no accesible)")
     return info
 
 
@@ -280,15 +350,25 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                 debug_print("Conexión cerrada")
 
     def _flush_log():
-        """Fuerza el flush del log para que quede escrito antes de operaciones peligrosas."""
+        """Fuerza escritura a disco drenando la cola y flusheando el FileHandler real."""
         try:
-            logger = logging.getLogger(f"{TOOL_NAME.lower()}_logger")
-            for h in logger.handlers:
-                h.flush()
+            if debug_log_listener and hasattr(debug_log_listener, "queue"):
+                while not debug_log_listener.queue.empty():
+                    try:
+                        record = debug_log_listener.queue.get_nowait()
+                        for h in debug_log_listener.handlers:
+                            h.handle(record)
+                    except queue.Empty:
+                        break
+            if _debug_file_handler:
+                _debug_file_handler.flush()
+                if hasattr(_debug_file_handler, "stream"):
+                    os.fsync(_debug_file_handler.stream.fileno())
         except Exception:
             pass
 
     def run_script_with_logging(filepath):
+        _reset_log()
         debug_print(f"=== INICIANDO APERTURA DE SCRIPT ===")
         debug_print(f"Filepath solicitado: {filepath}")
 
@@ -337,7 +417,13 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             for line in _collect_nuke_environment():
                 debug_print(f"  {line}")
 
+            debug_print("--- CALLBACKS REGISTRADOS EN SCRIPT ---")
+            for line in _collect_nuke_callbacks():
+                debug_print(f"  {line}")
+            _flush_log()
+
             debug_print("--- FASE 4: ACTIVANDO VENTANA ---")
+            _flush_log()
             activate_nuke_window_with_logging()
 
             debug_print("=== SCRIPT ABIERTO EXITOSAMENTE ===")
@@ -356,51 +442,85 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
 
     def activate_nuke_window_with_logging():
         try:
-            debug_print("Obteniendo instancia de QApplication...")
+            debug_print("Importando QApplication desde QtAdapter...")
+            _flush_log()
             from LGA_QtAdapter_OpenInNukeX import QApplication
 
+            debug_print("Import exitoso, obteniendo instancia de QApplication...")
+            _flush_log()
             app_instance = QApplication.instance()
 
             if app_instance:
                 debug_print("QApplication encontrada, buscando ventana activa...")
+                _flush_log()
                 active_window = app_instance.activeWindow()
 
                 if active_window:
-                    debug_print("Activando ventana activa...")
+                    debug_print(
+                        f"Ventana activa encontrada: {active_window.objectName()}, "
+                        f"clase: {active_window.__class__.__name__}, "
+                        f"visible: {active_window.isVisible()}"
+                    )
+                    _flush_log()
+                    debug_print("Llamando raise_() en ventana activa...")
+                    _flush_log()
                     active_window.raise_()
+                    debug_print("raise_() completado, llamando activateWindow()...")
+                    _flush_log()
                     active_window.activateWindow()
                     debug_print("Ventana activada exitosamente")
+                    _flush_log()
                 else:
-                    debug_print("No hay ventana activa, buscando ventana principal...")
+                    debug_print("No hay ventana activa, enumerando topLevelWidgets...")
+                    _flush_log()
+                    all_widgets = app_instance.topLevelWidgets()
+                    debug_print(f"Total topLevelWidgets: {len(all_widgets)}")
                     main_window = None
-                    for widget in app_instance.topLevelWidgets():
-                        if widget.isWindow() and widget.isVisible():
+                    for i, widget in enumerate(all_widgets):
+                        w_name = widget.objectName() if hasattr(widget, "objectName") else "?"
+                        w_class = widget.__class__.__name__
+                        w_visible = widget.isVisible()
+                        w_is_window = widget.isWindow()
+                        debug_print(
+                            f"  Widget[{i}]: name='{w_name}', class={w_class}, "
+                            f"isWindow={w_is_window}, visible={w_visible}"
+                        )
+                        if w_is_window and w_visible and main_window is None:
                             main_window = widget
-                            debug_print(
-                                f"Ventana encontrada: {widget.objectName() if hasattr(widget, 'objectName') else 'Unknown'}"
-                            )
-                            break
+                            debug_print(f"  -> Seleccionada como ventana principal")
 
+                    _flush_log()
                     if main_window:
-                        debug_print("Activando ventana principal...")
+                        debug_print(
+                            f"Activando ventana principal: {main_window.objectName()}"
+                        )
+                        _flush_log()
+                        debug_print("Llamando raise_()...")
+                        _flush_log()
                         main_window.raise_()
+                        debug_print("raise_() completado, llamando activateWindow()...")
+                        _flush_log()
                         main_window.activateWindow()
                         debug_print("Ventana principal activada exitosamente")
+                        _flush_log()
                     else:
                         debug_print(
                             "No se pudo encontrar ventana de Nuke para activar",
                             level="warning",
                         )
+                        _flush_log()
             else:
                 debug_print(
                     "No se pudo obtener la instancia de QApplication", level="warning"
                 )
+                _flush_log()
 
         except Exception as e:
             debug_print(f"ERROR en activación de ventana: {e}", level="error")
             debug_print(
                 f"Traceback activación ventana: {traceback.format_exc()}", level="error"
             )
+            _flush_log()
 
     def nuke_server(port=54325):
         debug_print(f"=== INICIANDO SERVIDOR OpenInNukeX EN PUERTO {port} ===")

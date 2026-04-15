@@ -56,7 +56,8 @@ LGA_OpenInNukeX/
 
 - `RelativeTimeFormatter`: formatter con tiempo relativo desde el primer record.
 - `_get_log_file_path()`: retorna la ruta al archivo de log.
-- `setup_debug_logging()`: configura el logger asincrono con encabezado de fecha/hora.
+- `_reset_log()`: vacia el archivo de log, escribe encabezado con fecha/hora y resetea `script_start_time` a `None` para que los timestamps relativos empiecen de cero. Se llama al inicio de cada `run_script_with_logging`.
+- `setup_debug_logging()`: configura el logger asincrono con encabezado de fecha/hora (se ejecuta una sola vez al importar el modulo).
 - `debug_print(*message, level="info")`: funcion principal de logging con soporte de niveles.
 - `_flush_log()`: fuerza flush antes de operaciones peligrosas.
 - `cleanup_logging()`: detiene el listener al terminar.
@@ -70,6 +71,11 @@ LGA_OpenInNukeX/
   - Total de nodos y top 5 tipos de nodos
   - Memoria RSS/VMS y CPU (si `psutil` esta disponible)
 
+- `_collect_nuke_callbacks()`: enumera todos los callbacks registrados en Nuke que podrian ejecutarse post-apertura:
+  - Tipos: `onScriptLoad`, `onScriptSave`, `onScriptClose`, `onCreate`, `onDestroy`, `onUserCreate`, `knobChanged`, `updateUI`, `autolabel`
+  - Para cada callback reporta: modulo, nombre de funcion, nodeClass filtrado
+  - Usa fallback a atributos directos de `nuke` si `nuke.callbacks` no esta disponible
+
 - `_log_file_info(filepath)`: captura metadata del archivo `.nk` que se va a abrir:
   - Existencia, tamano, fecha de modificacion
   - Path absoluto, normalizado, si es symlink
@@ -81,7 +87,9 @@ LGA_OpenInNukeX/
 - Formatter: `[%(relative_time)s] [%(module)s::%(funcName)s] %(message)s`
 - `threading.Lock` para proteger el setup
 - Limpieza del archivo al iniciar con encabezado de fecha/hora
-- Flush explicito antes de `scriptClose()` y `scriptOpen()`
+- Referencia global `_debug_file_handler` al `FileHandler` real (no al `QueueHandler`)
+- Flush explicito antes de `scriptClose()`, `scriptOpen()`, y antes/despues de cada operacion Qt en la activacion de ventana
+- `_flush_log()` drena la cola del `QueueListener`, hace `flush()` del `FileHandler` y `os.fsync()` para garantizar escritura a disco
 
 ### Formato del log
 
@@ -111,12 +119,13 @@ debug_print("Error grave", level="error")
 
 ### Fases del proceso de apertura de script
 
-1. **SNAPSHOT PRE-OPERACIÓN**: captura entorno completo + info del archivo antes de tocar nada.
-2. **FASE 1 - VERIFICAR ESTADO INICIAL**: lee estado de `nuke.root()`.
-3. **FASE 2 - CERRANDO SCRIPT ACTUAL**: flush + `scriptClose()`.
-4. **FASE 3 - ABRIENDO NUEVO SCRIPT**: flush + `scriptOpen()` + snapshot post-apertura.
-5. **FASE 4 - ACTIVANDO VENTANA**: `raise_()` + `activateWindow()`.
-6. **SNAPSHOT POST-ERROR** (si hay excepcion): captura entorno despues del error.
+1. **RESET LOG**: `_reset_log()` vacia el archivo, escribe encabezado de fecha/hora y resetea timestamps a cero.
+2. **SNAPSHOT PRE-OPERACIÓN**: captura entorno completo + info del archivo antes de tocar nada.
+3. **FASE 1 - VERIFICAR ESTADO INICIAL**: lee estado de `nuke.root()`.
+4. **FASE 2 - CERRANDO SCRIPT ACTUAL**: flush + `scriptClose()`.
+5. **FASE 3 - ABRIENDO NUEVO SCRIPT**: flush + `scriptOpen()` + snapshot post-apertura + enumeracion de callbacks registrados + flush.
+6. **FASE 4 - ACTIVANDO VENTANA**: flush antes de cada operacion Qt (`raise_()`, `activateWindow()`). Enumera todos los `topLevelWidgets` con nombre, clase, visibilidad. Flush despues de cada paso.
+7. **SNAPSHOT POST-ERROR** (si hay excepcion): captura entorno despues del error.
 
 ## Reglas obligatorias
 
@@ -132,13 +141,15 @@ debug_print("Error grave", level="error")
 - `C:\Users\leg4-pc\.nuke\LGA_OpenInNukeX\init.py`
   - `RelativeTimeFormatter`
   - `_get_log_file_path()`
-  - `setup_debug_logging()`
+  - `_reset_log()` — vacia log, escribe encabezado, resetea timestamps
+  - `setup_debug_logging()` — configura logger, `_debug_file_handler`, `QueueListener`
   - `debug_print()`
-  - `_flush_log()`
+  - `_flush_log()` — drena cola del listener, flush + fsync del `FileHandler` real
   - `cleanup_logging()`
   - `_collect_nuke_environment()`
+  - `_collect_nuke_callbacks()` — enumera callbacks registrados en Nuke
   - `_log_file_info()`
   - `run_script_with_logging()`
   - `handle_client()`
   - `nuke_server()`
-  - `activate_nuke_window_with_logging()`
+  - `activate_nuke_window_with_logging()` — flush antes/despues de cada operacion Qt
