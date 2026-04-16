@@ -123,7 +123,7 @@ debug_print("Error grave", level="error")
 2. **SNAPSHOT PRE-OPERACIÓN**: captura entorno completo + info del archivo antes de tocar nada.
 3. **FASE 1 - VERIFICAR ESTADO INICIAL**: lee estado de `nuke.root()`.
 4. **FASE 2 - CERRANDO SCRIPT ACTUAL**: flush + `scriptClose()`.
-5. **FASE 3 - ABRIENDO NUEVO SCRIPT**: flush + `scriptOpen()` + snapshot post-apertura + enumeracion de callbacks registrados + flush.
+5. **FASE 3 - ABRIENDO NUEVO SCRIPT**: registra un callback temporal `nuke.addOnCreate` que loguea cada nodo mientras se carga (`[LOAD #N] Class 'name'`), con flush cada 50 nodos y flush inmediato para nodos riesgosos (Group, Gizmo, LiveGroup, Precomp, Expression). El callback se remueve con `nuke.removeOnCreate` en un bloque `finally` (se ejecuta incluso si hay crash). Luego: snapshot post-apertura + enumeracion de callbacks registrados + flush.
 6. **FASE 4 - ACTIVANDO VENTANA**: flush antes de cada operacion Qt (`raise_()`, `activateWindow()`). Enumera todos los `topLevelWidgets` con nombre, clase, visibilidad. Flush despues de cada paso.
 7. **SNAPSHOT POST-ERROR** (si hay excepcion): captura entorno despues del error.
 

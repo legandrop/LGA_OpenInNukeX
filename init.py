@@ -1,8 +1,10 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.67 | Lega
+  LGA_OpenInNukeX v1.68 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
+
+  v1.68 - logging de la apertura del script
 ______________________________________________________________________________________
 
 """
@@ -17,6 +19,8 @@ from logging.handlers import QueueHandler, QueueListener
 import os
 import sys
 import traceback
+import inspect
+import importlib.util
 
 # ---------------------------------------------------------------------------
 # Logging flags  (alineados al patron de LGA_ToolPack / Python-Startup)
@@ -33,6 +37,7 @@ script_start_time = None
 debug_log_listener = None
 _debug_file_handler = None
 _logging_lock = threading.Lock()
+force_sync_logging = False
 
 TOOL_NAME = "OpenInNukeX"
 LOG_FILENAME = f"debugPy_{TOOL_NAME}.log"
@@ -48,29 +53,162 @@ class RelativeTimeFormatter(logging.Formatter):
         return super().format(record)
 
 
+def _is_valid_plugin_root(path):
+    if not path:
+        return False
+
+    try:
+        root = os.path.abspath(path)
+        if not os.path.isdir(root):
+            return False
+
+        expected_files = [
+            os.path.join(root, "init.py"),
+            os.path.join(root, "LGA_QtAdapter_OpenInNukeX.py"),
+        ]
+        return all(os.path.exists(candidate) for candidate in expected_files)
+    except Exception:
+        return False
+
+
+def _get_plugin_root():
+    candidates = []
+
+    try:
+        file_value = globals().get("__file__")
+        if file_value:
+            candidates.append(os.path.dirname(os.path.abspath(file_value)))
+    except Exception:
+        pass
+
+    try:
+        source_file = inspect.getsourcefile(_get_plugin_root)
+        if source_file:
+            candidates.append(os.path.dirname(os.path.abspath(source_file)))
+    except Exception:
+        pass
+
+    try:
+        spec = importlib.util.find_spec("LGA_QtAdapter_OpenInNukeX")
+        if spec and spec.origin:
+            candidates.append(os.path.dirname(os.path.abspath(spec.origin)))
+    except Exception:
+        pass
+
+    try:
+        for plugin_path in nuke.pluginPath():
+            if os.path.basename(os.path.normpath(plugin_path)) == "LGA_OpenInNukeX":
+                candidates.append(plugin_path)
+    except Exception:
+        pass
+
+    for candidate in candidates:
+        if _is_valid_plugin_root(candidate):
+            return os.path.abspath(candidate)
+
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def _get_log_file_path():
-    return os.path.join(os.path.dirname(__file__), "logs", LOG_FILENAME)
+    return os.path.join(_get_plugin_root(), "logs", LOG_FILENAME)
+
+
+def _emergency_trace(message):
+    """Escritura síncrona mínima para diagnosticar bloqueos o crashes."""
+    try:
+        trace_path = os.path.join(_get_plugin_root(), "logs", "emergency_trace.log")
+        os.makedirs(os.path.dirname(trace_path), exist_ok=True)
+        with open(trace_path, "a", encoding="utf-8") as handle:
+            handle.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} | {message}\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        pass
+
+
+def _get_relative_time_string():
+    global script_start_time
+    if script_start_time is None:
+        script_start_time = time.time()
+    return f"{time.time() - script_start_time:.3f}s"
+
+
+def _write_log_line_sync(message, caller_frame):
+    """Escribe una línea directamente al log principal con flush+fsync."""
+    try:
+        log_path = _get_log_file_path()
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+        module_name = os.path.splitext(
+            os.path.basename(caller_frame.f_code.co_filename)
+        )[0]
+        func_name = caller_frame.f_code.co_name
+        line = f"[{_get_relative_time_string()}] [{module_name}::{func_name}] {message}\n"
+
+        with open(log_path, "a", encoding="utf-8") as handle:
+            handle.write(line)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        pass
+
+
+def _critical_log(message):
+    """Log síncrono para la ruta crítica de apertura de scripts."""
+    _write_log_line_sync(message, sys._getframe(1))
 
 
 def _reset_log():
-    """Vacía el archivo de log y resetea el timestamp relativo para empezar de cero."""
-    global script_start_time
+    """Detiene el listener, vacía el log, y reinicia todo el pipeline de logging."""
+    global script_start_time, debug_log_listener, _debug_file_handler, debug_logger
     script_start_time = None
-    try:
-        log_file_path = _get_log_file_path()
+
+    with _logging_lock:
+        if debug_log_listener:
+            try:
+                debug_log_listener.stop()
+            except Exception:
+                pass
+            debug_log_listener = None
+
         if _debug_file_handler:
-            _debug_file_handler.flush()
-            _debug_file_handler.stream.close()
-            _debug_file_handler.stream = open(log_file_path, "w", encoding="utf-8")
-            _debug_file_handler.stream.write(
-                f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-            )
-            _debug_file_handler.stream.flush()
-        else:
+            try:
+                _debug_file_handler.close()
+            except Exception:
+                pass
+            _debug_file_handler = None
+
+        logger = logging.getLogger(f"{TOOL_NAME.lower()}_logger")
+        if logger.handlers:
+            logger.handlers.clear()
+
+        log_file_path = _get_log_file_path()
+        try:
             with open(log_file_path, "w", encoding="utf-8") as f:
                 f.write(f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-    except Exception:
-        pass
+        except Exception:
+            pass
+
+        _debug_file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+        _debug_file_handler.setLevel(logging.DEBUG)
+        _debug_file_handler.setFormatter(
+            RelativeTimeFormatter(
+                "[%(relative_time)s] [%(module)s::%(funcName)s] %(message)s"
+            )
+        )
+
+        log_queue = queue.Queue()
+        queue_handler = QueueHandler(log_queue)
+        queue_handler.setLevel(logging.DEBUG)
+        logger.addHandler(queue_handler)
+
+        debug_log_listener = QueueListener(
+            log_queue, _debug_file_handler, respect_handler_level=True
+        )
+        debug_log_listener.daemon = True
+        debug_log_listener.start()
+
+        debug_logger = logger
 
 
 def setup_debug_logging():
@@ -85,6 +223,7 @@ def setup_debug_logging():
             with open(log_file_path, "w", encoding="utf-8") as f:
                 f.write(f"Fecha: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         except Exception as e:
+            _emergency_trace(f"setup_debug_logging initialization failed: {e}")
             print(f"Warning: No se pudo inicializar el archivo de log: {e}")
 
         logger = logging.getLogger(f"{TOOL_NAME.lower()}_logger")
@@ -135,19 +274,19 @@ def debug_print(*message, level="info"):
     msg = " ".join(str(arg) for arg in message)
 
     if DEBUG_LOG:
-        if script_start_time is None:
-            script_start_time = time.time()
-        log_method = getattr(debug_logger, level, debug_logger.info)
-        try:
-            log_method(msg, stacklevel=2)
-        except TypeError:
-            log_method(msg)
+        if force_sync_logging:
+            _write_log_line_sync(msg, sys._getframe(1))
+        else:
+            if script_start_time is None:
+                script_start_time = time.time()
+            log_method = getattr(debug_logger, level, debug_logger.info)
+            try:
+                log_method(msg, stacklevel=2)
+            except TypeError:
+                log_method(msg)
 
     if DEBUG_CONSOLE:
-        if script_start_time is None:
-            script_start_time = time.time()
-        relative_time = time.time() - script_start_time
-        print(f"[{relative_time:.3f}s] {msg}")
+        print(f"[{_get_relative_time_string()}] {msg}")
 
 
 def _collect_nuke_environment():
@@ -310,8 +449,30 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                                 debug_print(
                                     f"Ejecutando script en main thread: {filepath}"
                                 )
+                                _critical_log(
+                                    f"[CRITICAL] before executeInMainThreadWithResult filepath='{filepath}'"
+                                )
+                                _emergency_trace(
+                                    f"handle_client before executeInMainThreadWithResult: {filepath}"
+                                )
+
+                                def _run_script_in_main_thread():
+                                    _critical_log(
+                                        f"[CRITICAL] main thread lambda entered filepath='{filepath}'"
+                                    )
+                                    _emergency_trace(
+                                        f"main thread lambda entered: {filepath}"
+                                    )
+                                    return run_script_with_logging(filepath)
+
                                 result = nuke.executeInMainThreadWithResult(
-                                    lambda: run_script_with_logging(filepath)
+                                    _run_script_in_main_thread
+                                )
+                                _emergency_trace(
+                                    f"executeInMainThreadWithResult returned: {result}"
+                                )
+                                _critical_log(
+                                    f"[CRITICAL] executeInMainThreadWithResult returned result='{result}'"
                                 )
                                 debug_print(
                                     f"Resultado ejecución en main thread: {result}"
@@ -350,16 +511,12 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                 debug_print("Conexión cerrada")
 
     def _flush_log():
-        """Fuerza escritura a disco drenando la cola y flusheando el FileHandler real."""
+        """Fuerza escritura a disco esperando que la cola se vacíe y flusheando el FileHandler."""
         try:
             if debug_log_listener and hasattr(debug_log_listener, "queue"):
-                while not debug_log_listener.queue.empty():
-                    try:
-                        record = debug_log_listener.queue.get_nowait()
-                        for h in debug_log_listener.handlers:
-                            h.handle(record)
-                    except queue.Empty:
-                        break
+                deadline = time.time() + 0.5
+                while not debug_log_listener.queue.empty() and time.time() < deadline:
+                    time.sleep(0.005)
             if _debug_file_handler:
                 _debug_file_handler.flush()
                 if hasattr(_debug_file_handler, "stream"):
@@ -368,7 +525,12 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             pass
 
     def run_script_with_logging(filepath):
+        global force_sync_logging
+        _emergency_trace(f"run_script_with_logging entered: {filepath}")
+        force_sync_logging = True
         _reset_log()
+        _emergency_trace("run_script_with_logging after _reset_log")
+        _critical_log(f"[CRITICAL] run_script_with_logging entered filepath='{filepath}'")
         debug_print(f"=== INICIANDO APERTURA DE SCRIPT ===")
         debug_print(f"Filepath solicitado: {filepath}")
 
@@ -382,6 +544,8 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             debug_print(f"  {line}")
 
         try:
+            _emergency_trace("run_script_with_logging before phase 1")
+            _critical_log("[CRITICAL] phase 1 start")
             debug_print("--- FASE 1: VERIFICAR ESTADO INICIAL ---")
             initial_modified = nuke.root().modified()
             initial_script = nuke.root().name()
@@ -389,8 +553,12 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             debug_print(f"Proyecto modificado: {initial_modified}")
 
             debug_print("--- FASE 2: CERRANDO SCRIPT ACTUAL ---")
+            _emergency_trace("before nuke.scriptClose")
+            _critical_log("[CRITICAL] before nuke.scriptClose")
             _flush_log()
             nuke.scriptClose()
+            _emergency_trace("after nuke.scriptClose")
+            _critical_log("[CRITICAL] after nuke.scriptClose")
 
             after_close_modified = nuke.root().modified()
             after_close_script = nuke.root().name()
@@ -409,8 +577,90 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
 
             debug_print("--- FASE 3: ABRIENDO NUEVO SCRIPT ---")
             debug_print(f"Llamando nuke.scriptOpen('{filepath}')...")
+            _emergency_trace(f"before registering load tracker: {filepath}")
+            _critical_log(f"[CRITICAL] before registering load trackers filepath='{filepath}'")
+
+            _node_load_counter = [0]
+            _script_load_counter = [0]
+
+            _risky_classes = frozenset([
+                "Group", "Gizmo", "LiveGroup", "Precomp",
+                "DeepExpression", "Expression",
+            ])
+
+            def _on_node_created_during_load():
+                try:
+                    n = nuke.thisNode()
+                    _node_load_counter[0] += 1
+                    node_name = n.name()
+                    node_class = n.Class()
+                    _critical_log(
+                        f"[LOAD #{_node_load_counter[0]}] {node_class} '{node_name}'"
+                    )
+                    debug_print(
+                        f"  [LOAD #{_node_load_counter[0]}] "
+                        f"{node_class} '{node_name}'"
+                    )
+                    if (
+                        _node_load_counter[0] % 50 == 0
+                        or node_class in _risky_classes
+                    ):
+                        _flush_log()
+                except Exception as cb_err:
+                    debug_print(
+                        f"  [LOAD] Error en callback onCreate: {cb_err}",
+                        level="warning",
+                    )
+
+            def _on_script_loaded():
+                try:
+                    _script_load_counter[0] += 1
+                    _critical_log(
+                        f"[SCRIPT LOAD #{_script_load_counter[0]}] root='{nuke.root().name()}'"
+                    )
+                    debug_print(
+                        f"  [SCRIPT LOAD #{_script_load_counter[0]}] "
+                        f"root='{nuke.root().name()}'"
+                    )
+                    _flush_log()
+                except Exception as cb_err:
+                    debug_print(
+                        f"  [SCRIPT LOAD] Error en callback onScriptLoad: {cb_err}",
+                        level="warning",
+                    )
+
+            debug_print("Registrando tracker de carga de nodos...")
+            nuke.addOnCreate(_on_node_created_during_load)
+            nuke.addOnScriptLoad(_on_script_loaded)
+            _emergency_trace("after nuke.addOnCreate")
+            _critical_log("[CRITICAL] after registering load trackers")
             _flush_log()
-            nuke.scriptOpen(filepath)
+
+            try:
+                _emergency_trace(f"before nuke.scriptOpen: {filepath}")
+                _critical_log(f"[CRITICAL] before nuke.scriptOpen filepath='{filepath}'")
+                nuke.scriptOpen(filepath)
+                _emergency_trace("after nuke.scriptOpen")
+                _critical_log("[CRITICAL] after nuke.scriptOpen")
+            finally:
+                _emergency_trace("entering scriptOpen finally")
+                _critical_log("[CRITICAL] entering scriptOpen finally")
+                nuke.removeOnCreate(_on_node_created_during_load)
+                nuke.removeOnScriptLoad(_on_script_loaded)
+                _emergency_trace(
+                    "trackers removed, total nodes: "
+                    f"{_node_load_counter[0]}, onScriptLoad: {_script_load_counter[0]}"
+                )
+                _critical_log(
+                    "[CRITICAL] trackers removed "
+                    f"total_nodes={_node_load_counter[0]} onScriptLoad={_script_load_counter[0]}"
+                )
+                debug_print(
+                    "Trackers removidos. "
+                    f"Total nodos cargados: {_node_load_counter[0]}. "
+                    f"onScriptLoad: {_script_load_counter[0]}"
+                )
+
             debug_print("nuke.scriptOpen() completado sin excepción")
 
             debug_print("--- SNAPSHOT ENTORNO POST-APERTURA ---")
@@ -427,9 +677,12 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             activate_nuke_window_with_logging()
 
             debug_print("=== SCRIPT ABIERTO EXITOSAMENTE ===")
+            _emergency_trace("run_script_with_logging returning True")
+            _critical_log("[CRITICAL] run_script_with_logging returning True")
             return True
 
         except Exception as e:
+            _critical_log(f"[CRITICAL] run_script_with_logging exception: {e}")
             debug_print(f"ERROR CRÍTICO en run_script_with_logging: {e}", level="error")
             debug_print(f"Traceback completo: {traceback.format_exc()}", level="error")
             debug_print("--- SNAPSHOT ENTORNO POST-ERROR ---", level="error")
@@ -439,6 +692,8 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             except Exception:
                 debug_print("No se pudo capturar entorno post-error", level="error")
             raise
+        finally:
+            force_sync_logging = False
 
     def activate_nuke_window_with_logging():
         try:
