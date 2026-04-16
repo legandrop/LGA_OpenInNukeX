@@ -28,6 +28,7 @@ import importlib.util
 DEBUG = True
 DEBUG_CONSOLE = False
 DEBUG_LOG = True
+DETAILED_OPEN_LOGGING = False
 
 # ---------------------------------------------------------------------------
 # Logging internals
@@ -115,6 +116,9 @@ def _get_log_file_path():
 
 def _emergency_trace(message):
     """Escritura síncrona mínima para diagnosticar bloqueos o crashes."""
+    if not DETAILED_OPEN_LOGGING:
+        return
+
     try:
         trace_path = os.path.join(_get_plugin_root(), "logs", "emergency_trace.log")
         os.makedirs(os.path.dirname(trace_path), exist_ok=True)
@@ -155,6 +159,9 @@ def _write_log_line_sync(message, caller_frame):
 
 def _critical_log(message):
     """Log síncrono para la ruta crítica de apertura de scripts."""
+    if not DETAILED_OPEN_LOGGING:
+        return
+
     _write_log_line_sync(message, sys._getframe(1))
 
 
@@ -274,7 +281,7 @@ def debug_print(*message, level="info"):
     msg = " ".join(str(arg) for arg in message)
 
     if DEBUG_LOG:
-        if force_sync_logging:
+        if DETAILED_OPEN_LOGGING and force_sync_logging:
             _write_log_line_sync(msg, sys._getframe(1))
         else:
             if script_start_time is None:
@@ -417,7 +424,6 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
     debug_print(f"Python: {sys.version}")
     debug_print(f"PID: {os.getpid()}")
     debug_print(f"Log file: {_get_log_file_path()}")
-    print("Este es NukeX, ejecutando el script.")
 
     def handle_client(conn):
         debug_print("=== NUEVA CONEXIÓN RECIBIDA ===")
@@ -527,7 +533,7 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
     def run_script_with_logging(filepath):
         global force_sync_logging
         _emergency_trace(f"run_script_with_logging entered: {filepath}")
-        force_sync_logging = True
+        force_sync_logging = DETAILED_OPEN_LOGGING
         _reset_log()
         _emergency_trace("run_script_with_logging after _reset_log")
         _critical_log(f"[CRITICAL] run_script_with_logging entered filepath='{filepath}'")
@@ -629,11 +635,12 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                         level="warning",
                     )
 
-            debug_print("Registrando tracker de carga de nodos...")
-            nuke.addOnCreate(_on_node_created_during_load)
-            nuke.addOnScriptLoad(_on_script_loaded)
-            _emergency_trace("after nuke.addOnCreate")
-            _critical_log("[CRITICAL] after registering load trackers")
+            if DETAILED_OPEN_LOGGING:
+                debug_print("Registrando tracker de carga de nodos...")
+                nuke.addOnCreate(_on_node_created_during_load)
+                nuke.addOnScriptLoad(_on_script_loaded)
+                _emergency_trace("after nuke.addOnCreate")
+                _critical_log("[CRITICAL] after registering load trackers")
             _flush_log()
 
             try:
@@ -643,23 +650,24 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                 _emergency_trace("after nuke.scriptOpen")
                 _critical_log("[CRITICAL] after nuke.scriptOpen")
             finally:
-                _emergency_trace("entering scriptOpen finally")
-                _critical_log("[CRITICAL] entering scriptOpen finally")
-                nuke.removeOnCreate(_on_node_created_during_load)
-                nuke.removeOnScriptLoad(_on_script_loaded)
-                _emergency_trace(
-                    "trackers removed, total nodes: "
-                    f"{_node_load_counter[0]}, onScriptLoad: {_script_load_counter[0]}"
-                )
-                _critical_log(
-                    "[CRITICAL] trackers removed "
-                    f"total_nodes={_node_load_counter[0]} onScriptLoad={_script_load_counter[0]}"
-                )
-                debug_print(
-                    "Trackers removidos. "
-                    f"Total nodos cargados: {_node_load_counter[0]}. "
-                    f"onScriptLoad: {_script_load_counter[0]}"
-                )
+                if DETAILED_OPEN_LOGGING:
+                    _emergency_trace("entering scriptOpen finally")
+                    _critical_log("[CRITICAL] entering scriptOpen finally")
+                    nuke.removeOnCreate(_on_node_created_during_load)
+                    nuke.removeOnScriptLoad(_on_script_loaded)
+                    _emergency_trace(
+                        "trackers removed, total nodes: "
+                        f"{_node_load_counter[0]}, onScriptLoad: {_script_load_counter[0]}"
+                    )
+                    _critical_log(
+                        "[CRITICAL] trackers removed "
+                        f"total_nodes={_node_load_counter[0]} onScriptLoad={_script_load_counter[0]}"
+                    )
+                    debug_print(
+                        "Trackers removidos. "
+                        f"Total nodos cargados: {_node_load_counter[0]}. "
+                        f"onScriptLoad: {_script_load_counter[0]}"
+                    )
 
             debug_print("nuke.scriptOpen() completado sin excepción")
 
@@ -820,7 +828,6 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                 pass
             return
 
-    print("Este es NukeX, ejecutando el script.")
     debug_print("Creando thread principal del servidor...")
     thread = threading.Thread(target=nuke_server, args=(54325,))
     thread.daemon = True
