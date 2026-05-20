@@ -1,7 +1,7 @@
 <p>
   <img src="Doc_Media/image1.png" alt="LGA OpenInNukeX logo" width="56" height="56" align="left" style="margin-right:8px;">
   <span style="font-size:1.6em;font-weight:700;line-height:1;">LGA OPENINNUKEX</span><br>
-  <span style="font-style:italic;line-height:1;">Lega | v1.66</span><br>
+  <span style="font-style:italic;line-height:1;">Lega | v1.69</span><br>
 </p>
 <br clear="left">
 
@@ -17,7 +17,7 @@ Permite abrir archivos `.nk` directamente en **NukeX** desde el explorador de ar
 <br>
 
 Es una aplicación de dos partes:<br>
-&nbsp;&nbsp;&nbsp;• **Servidor en NukeX**: corre desde [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py), escucha por TCP en el puerto `54325` y recibe comandos externos.<br>
+&nbsp;&nbsp;&nbsp;• **Servidor en NukeX**: corre desde [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py), escucha por TCP en el puerto `54325` y recibe comandos externos (`run_script||<path>` y `paste_clipboard`).<br>
 &nbsp;&nbsp;&nbsp;• **Cliente Qt/C++**: corre fuera de Nuke, administra la asociación de archivos `.nk`, detecta la ruta configurada de NukeX y decide si enviar el archivo a una instancia ya abierta o lanzar una nueva.<br><br>
 
 La lógica de apertura es esta:<br>
@@ -27,6 +27,14 @@ La lógica de apertura es esta:<br>
 
 Solo funciona con **NukeX** y no con otras variantes de Nuke. El servidor en `init.py` verifica esto antes de iniciar.
 ![](Doc_Media/image2.png)
+
+## Comandos TCP
+
+El servidor escucha en `localhost:54325` y soporta estos comandos:
+
+- `ping`: responde `pong` cuando el servidor esta activo en NukeX.
+- `run_script||<path>`: cierra el proyecto actual con `nuke.scriptClose()` y abre el `.nk` indicado con `nuke.scriptOpen()`.
+- `paste_clipboard`: ejecuta `nuke.nodePaste("%clipboard%")` en el proyecto actual. No cierra ni abre scripts. Este comando permite que herramientas externas, como el Contact Sheet del Review Panel de Hiero, copien clips al clipboard y pidan a NukeX que los pegue como nodos.
 
 ## Instalación
 
@@ -87,7 +95,7 @@ cd QtClient
 
 | Archivo | Funciones / clases clave |
 |---|---|
-| [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py) | `setup_debug_logging()`, `handle_client()`, `run_script_with_logging()`, servidor TCP en puerto `54325` |
+| [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py) | `setup_debug_logging()`, `handle_client()`, `run_script_with_logging()`, `paste_clipboard_with_logging()`, servidor TCP en puerto `54325` |
 | [main.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/main.cpp) | `NukeApp::event()`, `main()` |
 | [nukeopener.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/nukeopener.cpp) | `sendToNuke()`, `onConnected()`, `onResponseReceived()`, `openNukeWithFile()` |
 | [configwindow.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/configwindow.cpp) | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()`, `browseNukePath()` |

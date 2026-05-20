@@ -1,9 +1,10 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.68 | Lega
+  LGA_OpenInNukeX v1.69 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 
+  v1.69 - Agrega comando paste_clipboard para pegar nodos sin cerrar el proyecto
   v1.68 - logging de la apertura del script
 ______________________________________________________________________________________
 
@@ -443,6 +444,22 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                         else:
                             debug_print("PING desde NukeStudio - no respondiendo")
                             print("Received ping from NukeStudio, not responding.")
+                    elif data == "paste_clipboard":
+                        debug_print("Comando PASTE_CLIPBOARD recibido")
+                        _flush_log()
+
+                        def _paste_clipboard_in_main_thread():
+                            return paste_clipboard_with_logging()
+
+                        result = nuke.executeInMainThreadWithResult(
+                            _paste_clipboard_in_main_thread
+                        )
+                        debug_print(
+                            f"Resultado paste_clipboard en main thread: {result}"
+                        )
+                        response = "Clipboard pasted successfully\n"
+                        conn.sendall(response.encode())
+                        debug_print("Respuesta enviada exitosamente")
                     else:
                         debug_print(f"Procesando comando: '{data}'")
                         try:
@@ -529,6 +546,34 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                     os.fsync(_debug_file_handler.stream.fileno())
         except Exception:
             pass
+
+    def paste_clipboard_with_logging():
+        """Pega el contenido del clipboard en el proyecto actual sin cerrar ni abrir scripts."""
+        debug_print("=== INICIANDO PASTE DESDE CLIPBOARD ===")
+        debug_print("--- SNAPSHOT ENTORNO PRE-PASTE ---")
+        for line in _collect_nuke_environment():
+            debug_print(f"  {line}")
+
+        try:
+            before_nodes = len(nuke.allNodes())
+            debug_print(f"Nodos antes del paste: {before_nodes}")
+            _flush_log()
+
+            pasted = nuke.nodePaste("%clipboard%")
+            after_nodes = len(nuke.allNodes())
+            debug_print(f"Resultado nodePaste: {pasted}")
+            debug_print(f"Nodos despues del paste: {after_nodes}")
+            debug_print(f"Nodos agregados estimados: {after_nodes - before_nodes}")
+            _flush_log()
+
+            activate_nuke_window_with_logging()
+            debug_print("=== PASTE DESDE CLIPBOARD COMPLETADO ===")
+            return True
+        except Exception as e:
+            debug_print(f"ERROR en paste_clipboard: {e}", level="error")
+            debug_print(f"Traceback completo: {traceback.format_exc()}", level="error")
+            _flush_log()
+            raise
 
     def run_script_with_logging(filepath):
         global force_sync_logging

@@ -5,7 +5,7 @@
 
 ## Descripcion General
 
-Esta guia documenta el sistema de logging implementado en `LGA_OpenInNukeX` para registrar toda la actividad del servidor TCP que recibe comandos externos para abrir scripts en NukeX. El objetivo principal es capturar la maxima cantidad de informacion posible antes, durante y despues de operaciones criticas (como `scriptClose` y `scriptOpen`) para poder diagnosticar crashes de Nuke.
+Esta guia documenta el sistema de logging implementado en `LGA_OpenInNukeX` para registrar toda la actividad del servidor TCP que recibe comandos externos para abrir scripts en NukeX o pegar contenido del clipboard en el proyecto actual. El objetivo principal es capturar la maxima cantidad de informacion posible antes, durante y despues de operaciones criticas (como `scriptClose`, `scriptOpen` y `nodePaste`) para poder diagnosticar crashes de Nuke.
 
 ## Objetivos del Sistema
 
@@ -17,6 +17,7 @@ Esta guia documenta el sistema de logging implementado en `LGA_OpenInNukeX` para
 - Ser seguro para hilos usando `QueueHandler`, `QueueListener` y `threading.Lock`.
 - Capturar snapshots completos del entorno de Nuke antes de operaciones peligrosas.
 - Hacer flush del log antes de `scriptClose` y `scriptOpen` para que la informacion quede escrita incluso si Nuke crashea.
+- Registrar el comando `paste_clipboard` sin pasar por el flujo de cierre/apertura de scripts.
 
 ## Flags Base
 
@@ -80,6 +81,12 @@ LGA_OpenInNukeX/
   - Existencia, tamano, fecha de modificacion
   - Path absoluto, normalizado, si es symlink
 
+### Comandos TCP registrados
+
+- `ping`: confirma que el servidor esta activo y responde `pong`.
+- `run_script||<path>`: ejecuta `run_script_with_logging(filepath)`, que cierra el proyecto actual y abre el `.nk` indicado.
+- `paste_clipboard`: ejecuta `paste_clipboard_with_logging()`, que llama a `nuke.nodePaste("%clipboard%")` en el proyecto actual. No llama a `scriptClose()` ni a `scriptOpen()`.
+
 ### Reglas del logger
 
 - `logger.propagate = False`
@@ -88,7 +95,7 @@ LGA_OpenInNukeX/
 - `threading.Lock` para proteger el setup
 - Limpieza del archivo al iniciar con encabezado de fecha/hora
 - Referencia global `_debug_file_handler` al `FileHandler` real (no al `QueueHandler`)
-- Flush explicito antes de `scriptClose()`, `scriptOpen()`, y antes/despues de cada operacion Qt en la activacion de ventana
+- Flush explicito antes de `scriptClose()`, `scriptOpen()`, `nodePaste("%clipboard%")`, y antes/despues de cada operacion Qt en la activacion de ventana
 - `_flush_log()` drena la cola del `QueueListener`, hace `flush()` del `FileHandler` y `os.fsync()` para garantizar escritura a disco
 
 ### Formato del log
@@ -127,6 +134,14 @@ debug_print("Error grave", level="error")
 6. **FASE 4 - ACTIVANDO VENTANA**: flush antes de cada operacion Qt (`raise_()`, `activateWindow()`). Enumera todos los `topLevelWidgets` con nombre, clase, visibilidad. Flush despues de cada paso.
 7. **SNAPSHOT POST-ERROR** (si hay excepcion): captura entorno despues del error.
 
+### Fases del proceso de paste desde clipboard
+
+1. **SNAPSHOT PRE-PASTE**: captura entorno completo antes de pegar nodos.
+2. **CONTEO PREVIO**: registra la cantidad de nodos antes de `nodePaste`.
+3. **PASTE**: ejecuta `nuke.nodePaste("%clipboard%")` en el hilo principal de Nuke.
+4. **CONTEO POSTERIOR**: registra la cantidad de nodos despues del paste y una estimacion de nodos agregados.
+5. **ACTIVACION DE VENTANA**: llama a `activate_nuke_window_with_logging()`.
+
 ## Reglas obligatorias
 
 1. El archivo de log vive en `logs/` dentro del proyecto de la tool.
@@ -150,6 +165,7 @@ debug_print("Error grave", level="error")
   - `_collect_nuke_callbacks()` — enumera callbacks registrados en Nuke
   - `_log_file_info()`
   - `run_script_with_logging()`
+  - `paste_clipboard_with_logging()`
   - `handle_client()`
   - `nuke_server()`
   - `activate_nuke_window_with_logging()` — flush antes/despues de cada operacion Qt
