@@ -614,6 +614,13 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
                     contact_sheet.setXYpos(avg_xpos, max_ypos + 200)
                     debug_print(f"  Posicion ContactSheet: x={avg_xpos} y={max_ypos + 200}")
 
+                    # Conectar el primer Viewer existente al ContactSheet
+                    viewers = nuke.allNodes("Viewer")
+                    if viewers:
+                        viewer = viewers[0]
+                        viewer.setInput(0, contact_sheet)
+                        debug_print(f"  Viewer '{viewer.name()}' conectado al ContactSheet")
+
             _flush_log()
             activate_nuke_window_with_logging()
             debug_print("=== PASTE DESDE CLIPBOARD COMPLETADO ===")
