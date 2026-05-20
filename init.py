@@ -1,9 +1,10 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.69 | Lega
+  LGA_OpenInNukeX v1.70 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 
+  v1.70 - paste_clipboard: conecta Reads a LGA_ContactSheet y Viewer al resultado
   v1.69 - Agrega comando paste_clipboard para pegar nodos sin cerrar el proyecto
   v1.68 - logging de la apertura del script
 ______________________________________________________________________________________
@@ -555,6 +556,10 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             debug_print(f"  {line}")
 
         try:
+            # Deselect all so selectedNodes() post-paste da exactamente los nodos nuevos
+            for n in nuke.allNodes():
+                n.setSelected(False)
+
             before_nodes = len(nuke.allNodes())
             debug_print(f"Nodos antes del paste: {before_nodes}")
             _flush_log()
@@ -564,8 +569,52 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             debug_print(f"Resultado nodePaste: {pasted}")
             debug_print(f"Nodos despues del paste: {after_nodes}")
             debug_print(f"Nodos agregados estimados: {after_nodes - before_nodes}")
+
+            # Capturar los Read nodes mientras siguen seleccionados
+            pasted_nodes = nuke.selectedNodes()
+            read_nodes = [n for n in pasted_nodes if n.Class() == "Read"]
+            debug_print(f"Read nodes capturados para ContactSheet: {[n.name() for n in read_nodes]}")
             _flush_log()
 
+            # --- Cargar y conectar LGA_ContactSheet ---
+            cs_path = os.path.expanduser(
+                "~/.nuke/LGA_NodePack/LGizmos/Other/LGA_ContactSheet.nk"
+            ).replace("\\", "/")
+            debug_print(f"Buscando LGA_ContactSheet en: {cs_path}")
+
+            if not read_nodes:
+                debug_print("Sin Read nodes: se omite el ContactSheet", level="warning")
+            elif not os.path.exists(cs_path):
+                debug_print(f"LGA_ContactSheet.nk no encontrado: {cs_path}", level="error")
+            else:
+                # Deselect antes de pegar el template para identificarlo limpio
+                for n in nuke.allNodes():
+                    n.setSelected(False)
+
+                nuke.nodePaste(cs_path)
+                cs_pasted = nuke.selectedNodes()
+                contact_sheet = next(
+                    (n for n in cs_pasted if n.Class() == "Group" and "ContactSheet" in n.name()),
+                    None
+                )
+
+                if contact_sheet is None:
+                    debug_print("No se encontro el grupo LGA_ContactSheet en los nodos pegados", level="warning")
+                else:
+                    debug_print(f"LGA_ContactSheet encontrado: {contact_sheet.name()}")
+
+                    # Conectar cada Read al input correspondiente del grupo
+                    for i, read_node in enumerate(read_nodes):
+                        contact_sheet.setInput(i, read_node)
+                        debug_print(f"  Input {i} -> {read_node.name()}")
+
+                    # Posicionar el ContactSheet debajo de los Reads
+                    max_ypos = max(n.ypos() for n in read_nodes)
+                    avg_xpos = sum(n.xpos() for n in read_nodes) // len(read_nodes)
+                    contact_sheet.setXYpos(avg_xpos, max_ypos + 200)
+                    debug_print(f"  Posicion ContactSheet: x={avg_xpos} y={max_ypos + 200}")
+
+            _flush_log()
             activate_nuke_window_with_logging()
             debug_print("=== PASTE DESDE CLIPBOARD COMPLETADO ===")
             return True
