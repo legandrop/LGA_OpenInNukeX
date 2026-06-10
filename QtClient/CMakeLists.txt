@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(LGA_OpenInNukeX VERSION 1.66.0 LANGUAGES CXX)
+project(LGA_OpenInNukeX VERSION 1.71.0 LANGUAGES CXX)
 
 # Generate compile_commands.json for IntelliSense and clangd.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -43,6 +43,10 @@ target_link_libraries(LGA_OpenInNukeX
     Qt6::Network
 )
 
+target_compile_definitions(LGA_OpenInNukeX PRIVATE
+    OPENINNUKEX_VERSION="${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+)
+
 # ── Windows ──────────────────────────────────────────────────────────────────
 if(WIN32)
     set_target_properties(LGA_OpenInNukeX PROPERTIES
@@ -50,7 +54,7 @@ if(WIN32)
     )
     target_sources(LGA_OpenInNukeX PRIVATE LGA_OpenInNukeX.rc)
     enable_language(RC)
-    target_link_libraries(LGA_OpenInNukeX shell32)
+    target_link_libraries(LGA_OpenInNukeX shell32 dwmapi)
 endif()
 
 # ── macOS ─────────────────────────────────────────────────────────────────────

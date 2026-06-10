@@ -12,8 +12,42 @@
 #include <QGroupBox>
 #include <QTimer>
 #include <QSizePolicy>
+#include <QShowEvent>
 #include "logger.h"
 #include "qflowlayout.h"
+
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#include <dwmapi.h>
+#endif
+
+namespace {
+#ifdef Q_OS_WIN
+void applyDarkTitleBar(QWidget *window)
+{
+    if (!window) {
+        return;
+    }
+
+    const HWND hwnd = reinterpret_cast<HWND>(window->winId());
+    const BOOL enableDarkMode = TRUE;
+
+    // Windows 10 20H1+ usa 20; versiones anteriores compatibles usan 19.
+    HRESULT result = DwmSetWindowAttribute(
+        hwnd, 20, &enableDarkMode, sizeof(enableDarkMode));
+    if (FAILED(result)) {
+        DwmSetWindowAttribute(
+            hwnd, 19, &enableDarkMode, sizeof(enableDarkMode));
+    }
+
+    // Windows 11 permite fijar caption y texto sin depender del tema global.
+    const COLORREF captionColor = RGB(22, 22, 22);
+    const COLORREF textColor = RGB(242, 242, 242);
+    DwmSetWindowAttribute(hwnd, 35, &captionColor, sizeof(captionColor));
+    DwmSetWindowAttribute(hwnd, 36, &textColor, sizeof(textColor));
+}
+#endif
+}
 
 ConfigWindow::ConfigWindow(QWidget *parent)
     : QWidget(parent)
@@ -51,6 +85,15 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     Logger::logInfo("✓ initializeScanner() llamado");
     
     Logger::logInfo("=== CONSTRUCTOR ConfigWindow COMPLETADO ===");
+}
+
+void ConfigWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+
+#ifdef Q_OS_WIN
+    applyDarkTitleBar(this);
+#endif
 }
 
 void ConfigWindow::setupUI()
@@ -253,7 +296,9 @@ void ConfigWindow::setupUI()
     centralLayout->addSpacing(-20);
 
     // Añadir label de versión y autor
-    QLabel *versionLabel = new QLabel("v1.66 | Lega", contentWidget);
+    QLabel *versionLabel = new QLabel(
+        QString("v%1 | Lega").arg(OPENINNUKEX_VERSION),
+        contentWidget);
     versionLabel->setObjectName("versionLabel"); // Añadir un objectName para posible estilo futuro
     versionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }"); // Mismo estilo que descriptionLabel
     versionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter); // Alinear a la derecha y al centro verticalmente

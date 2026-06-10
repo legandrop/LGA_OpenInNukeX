@@ -1,7 +1,7 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.70 | Lega
+  LGA_OpenInNukeX v1.71 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 
   v1.70 - paste_clipboard: conecta Reads a LGA_ContactSheet y Viewer al resultado

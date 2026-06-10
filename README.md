@@ -1,7 +1,7 @@
 <p>
   <img src="Doc_Media/image1.png" alt="LGA OpenInNukeX logo" width="56" height="56" align="left" style="margin-right:8px;">
   <span style="font-size:1.6em;font-weight:700;line-height:1;">LGA OPENINNUKEX</span><br>
-  <span style="font-style:italic;line-height:1;">Lega | v1.69</span><br>
+  <span style="font-style:italic;line-height:1;">Lega | v1.71</span><br>
 </p>
 <br clear="left">
 
@@ -76,8 +76,9 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 **Windows**
 
 ```bat
-cd QtClient/scripts
-deploy.bat       # Release + paquete portable
+cd QtClient
+compilar_dev.bat # Debug incremental, despliega DLLs y ejecuta la app
+deploy.bat       # Release + paquete portable en release\deploy
 instalador.bat   # Genera el instalador .exe con Inno Setup
 ```
 

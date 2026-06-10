@@ -8,8 +8,8 @@ CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "LGA_OpenInNukeX.exe.manifest"
 
 // Información de versión
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION 0,14,0,0
-PRODUCTVERSION 0,14,0,0
+FILEVERSION 1,71,0,0
+PRODUCTVERSION 1,71,0,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -22,16 +22,16 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "LGA"
             VALUE "FileDescription", "LGA OpenInNukeX - Nuke Script File Opener"
-            VALUE "FileVersion", "1.66.0.0"
+            VALUE "FileVersion", "1.71.0.0"
             VALUE "InternalName", "LGA_OpenInNukeX"
             VALUE "LegalCopyright", "Copyright (C) 2025 LGA"
             VALUE "OriginalFilename", "LGA_OpenInNukeX.exe"
             VALUE "ProductName", "LGA OpenInNukeX"
-            VALUE "ProductVersion", "1.66.0.0"
+            VALUE "ProductVersion", "1.71.0.0"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
         VALUE "Translation", 0x409, 1200
     END
-END 
+END

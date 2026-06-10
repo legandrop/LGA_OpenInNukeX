@@ -6,8 +6,6 @@ for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
 set "DEPLOY_DIR=%QTCLIENT_DIR%\release\deploy"
 set "ISS_FILE=%QTCLIENT_DIR%\installer.iss"
 set "OUTPUT_DIR=%QTCLIENT_DIR%\installer_output"
-set "QT_DIR=C:\Qt\6.5.3\mingw_64"
-set "MINGW_DIR=C:\Qt\Tools\mingw1120_64"
 
 echo ================================================================
 echo           LGA OpenInNukeX - Generador de Instalador

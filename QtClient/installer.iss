@@ -1,8 +1,8 @@
 ; Script generado por Inno Setup Script Wizard.
-; LGA OpenInNukeX v1.66 Installer
+; LGA OpenInNukeX v1.71 Installer
 
 #define MyAppName "LGA OpenInNukeX"
-#define MyAppVersion "1.66"
+#define MyAppVersion "1.71"
 #define MyAppPublisher "LGA"
 #define MyAppURL "https://github.com/LGA"
 #define MyAppExeName "LGA_OpenInNukeX.exe"
@@ -61,4 +61,4 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 
 [UninstallRun]
 ; Limpiar asociaciones de archivos al desinstalar
-Filename: "cmd.exe"; Parameters: "/c assoc .nk="; Flags: runhidden; RunOnceId: "ClearNkAssoc" 
+Filename: "cmd.exe"; Parameters: "/c assoc .nk="; Flags: runhidden; RunOnceId: "ClearNkAssoc"

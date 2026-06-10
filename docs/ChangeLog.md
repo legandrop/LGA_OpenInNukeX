@@ -1,0 +1,9 @@
+v1.71: En Windows, la barra de titulo nativa de `OpenInNukeX Config` se fuerza siempre a modo oscuro mediante DWM. Se activa `DWMWA_USE_IMMERSIVE_DARK_MODE` con compatibilidad para los IDs usados por distintas versiones de Windows y, cuando Windows 11 lo permite, se fijan explicitamente el fondo `#161616` y el texto claro de la caption, evitando depender del tema global del sistema o del estilo Qt. [UI Windows - Forzar barra de titulo oscura]
+
+v1.70: El comando `paste_clipboard` conecta los nodos Read pegados a un `LGA_ContactSheet` y conecta el primer Viewer disponible al resultado. Se incorpora ademas el flujo moderno de mantenimiento del cliente Qt para Windows: compilacion incremental con Ninja, MinGW 13.1 y lld; despliegue automatico de dependencias y recursos; ejecucion al terminar; versionado centralizado; y reglas de trabajo del repositorio. [Build Qt - Modernizar compilacion y sincronizar version 1.70]
+
+v1.69: Se agrega el comando TCP `paste_clipboard` para pegar nodos desde el clipboard en el proyecto activo de NukeX sin cerrar ni abrir scripts. [Servidor NukeX - Agregar paste clipboard]
+
+v1.68: Se agrega logging detallado para diagnosticar la apertura de scripts y se deja la instrumentacion de mayor costo controlada por `DETAILED_OPEN_LOGGING`. [Logging - Diagnostico de apertura de scripts]
+
+v1.66: Se consolida el cliente Qt multiplataforma, el instalador y la asociacion de archivos `.nk` sin requerir permisos administrativos durante la ejecucion de la aplicacion. [Qt Client - Release multiplataforma]

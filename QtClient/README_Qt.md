@@ -15,6 +15,7 @@ Cliente Qt/C++ multiplataforma para abrir archivos .nk en NukeX. Disponible para
 - **Conexión TCP async**: conecta al servidor NukeX en puerto 54325 con timeout; sin bloqueos (`readyRead` signal)
 - **Fallback automático**: si no hay instancia activa de NukeX, lanza el ejecutable configurado con `--nukex`
 - **Interfaz moderna oscura**: tema QSS con fondo #161616
+- **Barra de titulo oscura en Windows**: DWM fuerza caption oscura independientemente del tema del sistema
 - **Sistema de logging**: logs detallados guardados en AppData/Application Support
 
 ## Estructura del Proyecto
@@ -37,11 +38,12 @@ QtClient/
 │   └── dark_theme.qss           # Tema oscuro
 ├── cmake/
 │   └── Info.plist.in            # Bundle macOS (CFBundleDocumentTypes, UTI .nk)
-├── scripts/                     # Scripts Windows (.bat)
-│   ├── compilar.bat
-│   ├── deploy.bat
-│   ├── limpiar.bat
-│   └── instalador.bat
+├── compilar_dev.bat             # Build Windows incremental + deploy + run
+├── compilar.bat                 # Wrapper compatible hacia compilar_dev.bat
+├── deploy.bat                   # Release portable Windows
+├── limpiar.bat                  # Limpieza manual
+├── instalador.bat               # Instalador Windows
+├── scripts/                     # Utilidades auxiliares Windows
 ├── compilar.sh                  # Build macOS (macdeployqt)
 ├── compilar_dev.sh              # Build dev macOS (Debug, rápido)
 ├── deploy.sh                    # Release macOS
@@ -71,14 +73,18 @@ Abre la ventana de configuración con:
 
 ### Windows
 
-Requiere Qt 6.x con MinGW y CMake.
+Requiere Qt 6.5.3, MinGW 13.1, Ninja, LLVM/lld y CMake.
 
 ```bat
 cd QtClient
-compilar.bat    # Debug
-deploy.bat      # Release + deploy portable
-instalador.bat  # Genera instalador .exe con Inno Setup
+compilar_dev.bat # Debug incremental, copia dependencias y lanza la app
+deploy.bat       # Release + deploy portable en release\deploy
+instalador.bat   # Genera instalador .exe con Inno Setup
 ```
+
+`compilar_dev.bat` conserva el cache de `build` y solo recompila los archivos
+modificados. `--force-clean` queda reservado para una limpieza explicita o para
+la migracion automatica desde un cache creado con otro generador/toolchain.
 
 ### macOS
 
@@ -127,10 +133,10 @@ Los logs se borran al iniciar la app.
 
 | | Windows | macOS |
 |---|---|---|
-| Qt | 6.x + MinGW | 6.5.3 (x86_64) |
+| Qt | 6.5.3 + MinGW 13.1 | 6.5.3 (x86_64) |
 | CMake | 3.16+ | 3.16+ |
 | OS | Windows 10/11 | macOS 12+ |
-| Extras | Inno Setup (instalador, opcional) | Homebrew duti (opcional) |
+| Extras | Ninja, LLVM/lld, Inno Setup (opcional) | Homebrew duti (opcional) |
 
 ## Referencias Técnicas
 

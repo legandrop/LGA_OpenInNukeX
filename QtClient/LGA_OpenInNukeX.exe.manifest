@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity 
-    version="1.66.0.0"
+  <assemblyIdentity
+    version="1.71.0.0"
     processorArchitecture="*"
-    name="LGA.OpenInNukeX" 
+    name="LGA.OpenInNukeX"
     type="win32" />
   <description>LGA OpenInNukeX - Nuke Script File Opener</description>
-  
+
   <!-- NO solicitar permisos de administrador -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <requestedExecutionLevel 
-          level="asInvoker" 
+        <requestedExecutionLevel
+          level="asInvoker"
           uiAccess="false"/>
       </requestedPrivileges>
     </security>
   </trustInfo>
-  
+
   <!-- Compatibilidad con Windows 10/11 -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
@@ -31,4 +31,4 @@
       <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
     </application>
   </compatibility>
-</assembly> 
+</assembly>

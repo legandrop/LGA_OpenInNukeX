@@ -1,5 +1,6 @@
 release/
 build/
+build_deploy/
 debug/
 __pycache__/
 *.pyc

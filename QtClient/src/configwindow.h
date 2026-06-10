@@ -20,6 +20,7 @@
 #include "nukescanner.h"
 
 class QFlowLayout;
+class QShowEvent;
 
 class ConfigWindow : public QWidget
 {
@@ -27,6 +28,9 @@ class ConfigWindow : public QWidget
 
 public:
     explicit ConfigWindow(QWidget *parent = nullptr);
+
+protected:
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void browseNukePath();

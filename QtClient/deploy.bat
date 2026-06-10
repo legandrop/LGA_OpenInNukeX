@@ -1,192 +1,100 @@
 @echo off
 setlocal EnableExtensions
 
+set "NO_RUN=false"
+if /I "%~1"=="--no-run" set "NO_RUN=true"
+
 for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
+set "BUILD_DIR=%QTCLIENT_DIR%\build_deploy"
 set "RELEASE_DIR=%QTCLIENT_DIR%\release"
 set "DEPLOY_DIR=%RELEASE_DIR%\deploy"
 set "QT_DIR=C:\Qt\6.5.3\mingw_64"
-set "MINGW_DIR=C:\Qt\Tools\mingw1120_64"
-set "SETUSERFTA_SOURCE=%QTCLIENT_DIR%\resources\SetUserFTA.exe"
-set "SETUSERFTA_FALLBACK=%QTCLIENT_DIR%\scripts\deploy\SetUserFTA.exe"
-
-echo ===============================================
-echo    LGA_OpenInNukeX
-echo ===============================================
-echo.
-
-if not exist "%QT_DIR%\bin\qmake.exe" (
-    echo [ERROR] No se encontro Qt en: %QT_DIR%
-    exit /b 1
-)
+set "MINGW_DIR=C:\Qt\Tools\mingw1310_64"
+set "NINJA_DIR=C:\Qt\Tools\Ninja"
+set "LLVM_DIR=C:\Program Files\LLVM\bin"
+set "PARALLEL_CORES=%NUMBER_OF_PROCESSORS%"
 
 if not exist "%QT_DIR%\lib\cmake\Qt6\Qt6Config.cmake" (
-    echo [ERROR] No se encontro Qt6Config.cmake en: %QT_DIR%\lib\cmake\Qt6
+    echo ERROR: Qt 6.5.3 no encontrado.
+    exit /b 1
+)
+if not exist "%MINGW_DIR%\bin\g++.exe" (
+    echo ERROR: MinGW 13.1 no encontrado.
+    exit /b 1
+)
+if not exist "%NINJA_DIR%\ninja.exe" (
+    echo ERROR: Ninja no encontrado.
+    exit /b 1
+)
+if not exist "%LLVM_DIR%\ld.lld.exe" (
+    echo ERROR: lld no encontrado.
+    exit /b 1
+)
+if not exist "%QTCLIENT_DIR%\resources\SetUserFTA.exe" (
+    echo ERROR: Falta resources\SetUserFTA.exe.
     exit /b 1
 )
 
-if not exist "%MINGW_DIR%\bin\mingw32-make.exe" (
-    echo [ERROR] No se encontro mingw32-make.exe en: %MINGW_DIR%
-    exit /b 1
+set "PATH=%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%LLVM_DIR%;%PATH%"
+
+taskkill /F /IM LGA_OpenInNukeX.exe >nul 2>&1
+
+if exist "%BUILD_DIR%\CMakeCache.txt" (
+    findstr /C:"CMAKE_GENERATOR:INTERNAL=Ninja" "%BUILD_DIR%\CMakeCache.txt" >nul 2>&1
+    if errorlevel 1 rmdir /S /Q "%BUILD_DIR%"
 )
 
-if not exist "%SETUSERFTA_SOURCE%" (
-    if exist "%SETUSERFTA_FALLBACK%" (
-        set "SETUSERFTA_SOURCE=%SETUSERFTA_FALLBACK%"
-    ) else (
-        echo [ERROR] No se encontro SetUserFTA.exe en: %SETUSERFTA_SOURCE%
-        echo [ERROR] El deploy de release requiere este archivo para las asociaciones de .nk.
+echo Configurando Release...
+cmake -S "%QTCLIENT_DIR%" -B "%BUILD_DIR%" -G "Ninja" ^
+    -DCMAKE_PREFIX_PATH="%QT_DIR%" ^
+    -DCMAKE_BUILD_TYPE=Release ^
+    -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" ^
+    -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld"
+if errorlevel 1 exit /b 1
+
+echo Compilando Release...
+cmake --build "%BUILD_DIR%" --parallel "%PARALLEL_CORES%"
+if errorlevel 1 exit /b 1
+
+if exist "%DEPLOY_DIR%" rmdir /S /Q "%DEPLOY_DIR%"
+mkdir "%DEPLOY_DIR%"
+
+copy /Y "%BUILD_DIR%\LGA_OpenInNukeX.exe" "%DEPLOY_DIR%\" >nul
+copy /Y "%QTCLIENT_DIR%\dark_theme.qss" "%DEPLOY_DIR%\" >nul
+copy /Y "%QTCLIENT_DIR%\resources\app_icon.ico" "%DEPLOY_DIR%\" >nul
+copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%DEPLOY_DIR%\" >nul
+
+echo Desplegando Qt y runtime MinGW...
+"%QT_DIR%\bin\windeployqt.exe" --compiler-runtime --dir "%DEPLOY_DIR%" "%DEPLOY_DIR%\LGA_OpenInNukeX.exe"
+if errorlevel 1 exit /b 1
+
+if not exist "%DEPLOY_DIR%\libgcc_s_seh-1.dll" copy /Y "%MINGW_DIR%\bin\libgcc_s_seh-1.dll" "%DEPLOY_DIR%\" >nul
+if not exist "%DEPLOY_DIR%\libstdc++-6.dll" copy /Y "%MINGW_DIR%\bin\libstdc++-6.dll" "%DEPLOY_DIR%\" >nul
+if not exist "%DEPLOY_DIR%\libwinpthread-1.dll" copy /Y "%MINGW_DIR%\bin\libwinpthread-1.dll" "%DEPLOY_DIR%\" >nul
+
+for %%F in (
+    LGA_OpenInNukeX.exe
+    Qt6Core.dll
+    Qt6Widgets.dll
+    Qt6Network.dll
+    dark_theme.qss
+    app_icon.ico
+    SetUserFTA.exe
+) do (
+    if not exist "%DEPLOY_DIR%\%%F" (
+        echo ERROR: Falta %%F en el deploy.
         exit /b 1
     )
 )
 
-set "PATH=%QT_DIR%\bin;%MINGW_DIR%\bin;%PATH%"
-
-echo Cerrando instancias previas de LGA_OpenInNukeX...
-taskkill /f /im LGA_OpenInNukeX.exe >nul 2>&1
-echo Instancias cerradas
-echo.
-echo =================================
-echo    COMPILANDO PARA PRODUCCION
-echo =================================
-
-if exist "%QTCLIENT_DIR%\limpiar.bat" (
-    call "%QTCLIENT_DIR%\limpiar.bat" >nul 2>&1
-)
-
-echo Configurando proyecto con CMake (Release)...
-cmake -S "%QTCLIENT_DIR%" -B "%RELEASE_DIR%" -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="%QT_DIR%\lib\cmake"
-if errorlevel 1 (
-    echo Error en la configuracion de CMake
-    exit /b 1
-)
-
-echo Compilando...
-cmake --build "%RELEASE_DIR%" -j 4
-if errorlevel 1 (
-    echo Error en la compilacion
+if not exist "%DEPLOY_DIR%\platforms\qwindows.dll" (
+    echo ERROR: Falta platforms\qwindows.dll en el deploy.
     exit /b 1
 )
 
 echo.
-echo =================================
-echo    CREANDO PAQUETE DE DEPLOY
-echo =================================
+echo Deploy completado en "%DEPLOY_DIR%".
+if /I "%NO_RUN%"=="true" exit /b 0
 
-if not exist "%DEPLOY_DIR%" (
-    mkdir "%DEPLOY_DIR%"
-    echo Directorio deploy creado
-) else (
-    echo Directorio deploy ya existe
-)
-
-echo.
-echo Copiando ejecutable principal...
-copy /Y "%RELEASE_DIR%\LGA_OpenInNukeX.exe" "%DEPLOY_DIR%\LGA_OpenInNukeX.exe" >nul
-if exist "%DEPLOY_DIR%\LGA_OpenInNukeX.exe" (
-    echo LGA_OpenInNukeX.exe copiado exitosamente
-) else (
-    echo ERROR: No se pudo copiar LGA_OpenInNukeX.exe
-    exit /b 1
-)
-
-if exist "%QTCLIENT_DIR%\nukeXpath.txt" (
-    copy /Y "%QTCLIENT_DIR%\nukeXpath.txt" "%DEPLOY_DIR%\nukeXpath.txt" >nul
-    echo Archivo nukeXpath.txt copiado
-)
-
-echo.
-echo Copiando iconos necesarios...
-copy /Y "%QTCLIENT_DIR%\resources\app_icon.ico" "%DEPLOY_DIR%\app_icon.ico" >nul 2>&1
-if not exist "%DEPLOY_DIR%\app_icon.ico" (
-    copy /Y "%QTCLIENT_DIR%\scripts\deploy\app_icon.ico" "%DEPLOY_DIR%\app_icon.ico" >nul 2>&1
-)
-if exist "%DEPLOY_DIR%\app_icon.ico" (
-    echo Icono app_icon.ico copiado exitosamente
-) else (
-    echo Warning: No se pudo copiar app_icon.ico desde ninguna ubicacion
-)
-
-echo.
-echo Copiando archivo de tema...
-copy /Y "%QTCLIENT_DIR%\dark_theme.qss" "%DEPLOY_DIR%\dark_theme.qss" >nul 2>&1
-if exist "%DEPLOY_DIR%\dark_theme.qss" (
-    echo Archivo dark_theme.qss copiado exitosamente
-) else (
-    echo Warning: No se pudo copiar dark_theme.qss
-)
-
-echo.
-echo Desplegando dependencias de Qt...
-pushd "%DEPLOY_DIR%" >nul
-windeployqt.exe LGA_OpenInNukeX.exe
-if errorlevel 1 (
-    popd >nul
-    echo Error ejecutando windeployqt
-    exit /b 1
-)
-
-echo.
-echo Verificando SetUserFTA.exe (requerido para asociaciones de archivos)...
-if exist "SetUserFTA.exe" (
-    echo SetUserFTA.exe ya existe en deploy\
-) else (
-    if exist "%SETUSERFTA_SOURCE%" (
-        echo SetUserFTA.exe encontrado en la ruta canonica, copiando...
-        copy /Y "%SETUSERFTA_SOURCE%" "SetUserFTA.exe" >nul
-        if exist "SetUserFTA.exe" (
-            echo SetUserFTA.exe copiado exitosamente
-        ) else (
-            echo ERROR: No se pudo copiar SetUserFTA.exe
-            popd >nul
-            exit /b 1
-        )
-    ) else (
-        echo ERROR: SetUserFTA.exe no encontrado
-        echo.
-        echo INSTRUCCIONES PARA OBTENER SETUSERFTA:
-        echo 1. Visita: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-        echo 2. Descarga SetUserFTA.exe
-        echo 3. Copia SetUserFTA.exe a QtClient\resources\ o directamente a QtClient\release\deploy\
-        echo.
-        popd >nul
-        exit /b 1
-    )
-)
-
-echo.
-echo Verificando archivos finales en deploy...
-if exist "LGA_OpenInNukeX.exe" (
-    echo LGA_OpenInNukeX.exe: OK
-) else (
-    echo LGA_OpenInNukeX.exe: FALTA
-)
-
-if exist "app_icon.ico" (
-    echo app_icon.ico: OK
-) else (
-    echo app_icon.ico: FALTA (opcional)
-)
-
-if exist "SetUserFTA.exe" (
-    echo SetUserFTA.exe: OK
-) else (
-    echo SetUserFTA.exe: FALTA (requerido para asociaciones)
-    popd >nul
-    exit /b 1
-)
-
-if exist "dark_theme.qss" (
-    echo dark_theme.qss: OK
-) else (
-    echo dark_theme.qss: FALTA (tema visual)
-)
-
-popd >nul
-
-echo.
-echo ===============================================
-echo Deploy completado. Archivos listos en release\deploy\
-echo ===============================================
-echo.
-
+start "" "%DEPLOY_DIR%\LGA_OpenInNukeX.exe"
 exit /b 0
