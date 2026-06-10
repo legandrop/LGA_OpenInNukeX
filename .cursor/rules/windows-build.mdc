@@ -54,7 +54,8 @@ QtClient\deploy.bat
 ```
 
 - `deploy.bat` usa `QtClient\build_deploy` y publica en `QtClient\release\deploy`.
-- Para generar el instalador, ejecutar `QtClient\instalador.bat` despues de un deploy exitoso.
+- Para generar el instalador, ejecutar `QtClient\instalador.bat`.
+- `instalador.bat` debe ejecutar siempre `deploy.bat --no-run` antes de Inno Setup para no empaquetar un Release obsoleto.
 - Mantener `SetUserFTA.exe`, `dark_theme.qss` y `app_icon.ico` junto al ejecutable distribuido.
 
 ## Lenguaje

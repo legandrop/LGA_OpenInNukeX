@@ -79,12 +79,14 @@ Requiere Qt 6.5.3, MinGW 13.1, Ninja, LLVM/lld y CMake.
 cd QtClient
 compilar_dev.bat # Debug incremental, copia dependencias y lanza la app
 deploy.bat       # Release + deploy portable en release\deploy
-instalador.bat   # Genera instalador .exe con Inno Setup
+instalador.bat   # Regenera Release y crea el instalador con Inno Setup
 ```
 
 `compilar_dev.bat` conserva el cache de `build` y solo recompila los archivos
 modificados. `--force-clean` queda reservado para una limpieza explicita o para
 la migracion automatica desde un cache creado con otro generador/toolchain.
+`instalador.bat` ejecuta primero `deploy.bat --no-run`, por lo que nunca
+empaqueta accidentalmente un ejecutable Release anterior.
 
 ### macOS
 

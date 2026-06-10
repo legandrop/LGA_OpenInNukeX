@@ -79,7 +79,7 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 cd QtClient
 compilar_dev.bat # Debug incremental, despliega DLLs y ejecuta la app
 deploy.bat       # Release + paquete portable en release\deploy
-instalador.bat   # Genera el instalador .exe con Inno Setup
+instalador.bat   # Regenera Release y crea el instalador con Inno Setup
 ```
 
 **macOS**

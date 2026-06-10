@@ -12,19 +12,14 @@ echo           LGA OpenInNukeX - Generador de Instalador
 echo ================================================================
 echo.
 
-if not exist "%DEPLOY_DIR%" (
-    echo [ERROR] La carpeta release\deploy no existe.
-    echo Ejecuta primero deploy.bat para generar los archivos de distribucion.
-    echo.
+echo [INFO] Generando un deploy Release actualizado...
+call "%QTCLIENT_DIR%\deploy.bat" --no-run
+if errorlevel 1 (
+    echo [ERROR] No se pudo generar el deploy Release.
     exit /b 1
 )
-
-if not exist "%DEPLOY_DIR%\LGA_OpenInNukeX.exe" (
-    echo [ERROR] No se encontro LGA_OpenInNukeX.exe en release\deploy\
-    echo Ejecuta primero deploy.bat para generar los archivos de distribucion.
-    echo.
-    exit /b 1
-)
+echo [OK] Deploy Release actualizado.
+echo.
 
 set "INNO_PATH=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if not exist "%INNO_PATH%" (
