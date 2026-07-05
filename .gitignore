@@ -11,3 +11,5 @@ deploy/
 installer_output/
 *.log
 logs/
+.codex/
+.cursor/
