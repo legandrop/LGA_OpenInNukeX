@@ -40,6 +40,17 @@ if [ "$FORCE_CLEAN" = "true" ]; then
     rm -rf build
 fi
 
+# Guard anti cache-viejo de SDK: si el CMAKE_OSX_SYSROOT cacheado ya no existe (tras un update
+# de Xcode que cambia MacOSXNN.sdk), limpiamos el build para reconfigurar y evitar el error
+# "'type_traits' file not found".
+if [ -f "build/CMakeCache.txt" ]; then
+    CACHED_SDK="$(awk -F= '/^CMAKE_OSX_SYSROOT/{print $2}' build/CMakeCache.txt)"
+    if [ -n "$CACHED_SDK" ] && [ ! -d "$CACHED_SDK" ]; then
+        echo "🧹 SDK cacheado no existe ($CACHED_SDK); limpiando build para reconfigurar..."
+        rm -rf build
+    fi
+fi
+
 mkdir -p build
 cd build
 
@@ -117,6 +128,14 @@ if [ ! -f "build/LGA_OpenInNukeX.app/Contents/PlugIns/platforms/libqcocoa.dylib"
 fi
 
 echo "✅ Compilación completada en $(date)"
+# Refrescar el cache de iconos del bundle: tras cambiar el .icns, el Dock/Finder pueden seguir
+# mostrando el icono viejo por cache (iconservices). touch + lsregister -f fuerzan a re-leerlo.
+LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [ -d "build/LGA_OpenInNukeX.app" ]; then
+    touch "build/LGA_OpenInNukeX.app"
+    [ -x "$LSREG" ] && "$LSREG" -f "build/LGA_OpenInNukeX.app" >/dev/null 2>&1 || true
+fi
+
 echo "🚀 Ejecutando LGA_OpenInNukeX..."
 
 # Rosetta workaround para Qt 6.5.3 en ARM64

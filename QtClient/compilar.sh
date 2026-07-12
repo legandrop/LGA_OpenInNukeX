@@ -109,6 +109,14 @@ if [ ! -f "$PLUGINS_DIR/platforms/libqcocoa.dylib" ]; then
 fi
 
 echo "✅ Compilación completada en $(date)"
+# Refrescar el cache de iconos del bundle: tras cambiar el .icns, el Dock/Finder pueden seguir
+# mostrando el icono viejo por cache (iconservices). touch + lsregister -f fuerzan a re-leerlo.
+LSREG="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [ -d "build/LGA_OpenInNukeX.app" ]; then
+    touch "build/LGA_OpenInNukeX.app"
+    [ -x "$LSREG" ] && "$LSREG" -f "build/LGA_OpenInNukeX.app" >/dev/null 2>&1 || true
+fi
+
 echo "🚀 Ejecutando LGA_OpenInNukeX..."
 
 arch -x86_64 "$APP_BUNDLE/Contents/MacOS/LGA_OpenInNukeX"
