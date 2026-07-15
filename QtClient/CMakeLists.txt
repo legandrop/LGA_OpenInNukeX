@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(LGA_OpenInNukeX VERSION 1.72.0 LANGUAGES CXX)
+project(LGA_OpenInNukeX VERSION 1.73.0 LANGUAGES CXX)
 
 # Generate compile_commands.json for IntelliSense and clangd.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -13,10 +13,41 @@ if(APPLE)
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
     set(CMAKE_MACOSX_RPATH ON)
     set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks")
+
+    # AGL (Apple Graphics Library) es un framework legacy de OpenGL que Apple removio
+    # en macOS 12+. Bloqueamos que FindOpenGL de CMake lo detecte o proponga.
+    set(OPENGL_agl_LIBRARY "" CACHE STRING "AGL library" FORCE)
+    set(OPENGL_AGL_INCLUDE_DIR "" CACHE PATH "AGL include dir" FORCE)
 endif()
 
 # Qt6
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+
+if(APPLE)
+    # Qt6 usa el interface target WrapOpenGL::WrapOpenGL para OpenGL en macOS
+    # (definido en $QTDIR/lib/cmake/Qt6/FindWrapOpenGL.cmake). Ese archivo agrega
+    # "-framework AGL" incondicionalmente como fallback cuando find_library no
+    # encuentra AGL (removido en macOS 12+). Lo purgamos aca para que ni el
+    # sistema ni ningun consumer de Qt6::Widgets traiga AGL por transitividad.
+    if(TARGET WrapOpenGL::WrapOpenGL)
+        get_target_property(_wo_libs WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
+        if(_wo_libs)
+            set(_wo_new_libs "")
+            set(_wo_changed FALSE)
+            foreach(_wo_lib ${_wo_libs})
+                if("${_wo_lib}" MATCHES "(^|/)AGL(\\.framework)?$" OR "${_wo_lib}" MATCHES "-framework[ \t]+AGL")
+                    set(_wo_changed TRUE)
+                else()
+                    list(APPEND _wo_new_libs "${_wo_lib}")
+                endif()
+            endforeach()
+            if(_wo_changed)
+                set_target_properties(WrapOpenGL::WrapOpenGL PROPERTIES INTERFACE_LINK_LIBRARIES "${_wo_new_libs}")
+                message(STATUS "AGL framework removed from WrapOpenGL::WrapOpenGL")
+            endif()
+        endif()
+    endif()
+endif()
 
 set(CMAKE_AUTOMOC ON)
 

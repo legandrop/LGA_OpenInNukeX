@@ -25,31 +25,12 @@ PARALLEL_CORES=$(sysctl -n hw.ncpu)
 mkdir -p build
 cd build
 
-# AGL framework dummy (necesario en macOS 12+ con Qt 6)
-if [ -f "/System/Library/Frameworks/AGL.framework/Versions/A/AGL" ] || \
-   [ -f "/Library/Frameworks/AGL.framework/Versions/A/AGL" ]; then
-    echo "AGL framework funcional encontrado."
-    AGL_NEEDED=false
-else
-    AGL_NEEDED=true
-    echo "Creando dummy AGL framework..."
-    if [ ! -f "AGL.framework/Versions/A/AGL" ]; then
-        mkdir -p AGL.framework/Versions/A
-        echo "void _aglDummy(){}" > agl_dummy.c
-        clang -dynamiclib agl_dummy.c -o AGL.framework/Versions/A/AGL \
-            -install_name /System/Library/Frameworks/AGL.framework/Versions/A/AGL \
-            -arch x86_64 -arch arm64
-        ln -sf A AGL.framework/Versions/Current
-        ln -sf Versions/Current/AGL AGL.framework/AGL
-        rm agl_dummy.c
-        echo "Dummy AGL creado."
-    fi
-fi
-
 # Detectar SDK
 SDK_PATH=$(xcrun --show-sdk-path 2>/dev/null || xcrun --sdk macosx --show-sdk-path 2>/dev/null)
 if [ -n "$SDK_PATH" ]; then export SDKROOT="$SDK_PATH"; fi
 
+# El requerimiento de -framework AGL de Qt6 (via WrapOpenGL::WrapOpenGL) se
+# neutraliza directamente en CMakeLists.txt, asi que no hace falta dummy AGL.
 CMAKE_FLAGS=(
     -G "Unix Makefiles"
     -DCMAKE_PREFIX_PATH="$QT_PATH"
@@ -59,9 +40,6 @@ CMAKE_FLAGS=(
     -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
     -DCMAKE_EXE_LINKER_FLAGS="-Wl,-no_warn_duplicate_libraries"
 )
-if [ "$AGL_NEEDED" = "true" ]; then
-    CMAKE_FLAGS+=(-DCMAKE_EXE_LINKER_FLAGS="-F $PWD -Wl,-no_warn_duplicate_libraries")
-fi
 
 echo "⚙️  Configurando CMake..."
 cmake .. "${CMAKE_FLAGS[@]}"
