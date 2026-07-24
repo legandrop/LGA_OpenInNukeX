@@ -1,6 +1,6 @@
 # Instrucciones para LGA_OpenInNukeX
 
-- Todas las reglas de este repo (`.codex/`, `.cursor/rules/`) deben estar escritas en castellano.
+- Todas las reglas de este repo (`AGENTS.md`, `.cursor/rules/`) deben estar escritas en castellano.
 - Este archivo es **espejo** de `.cursor/rules/instructions.mdc`. Al modificar acá, sincronizar tambien el `.mdc` — y viceversa.
 
 ## Objetivo del repo
