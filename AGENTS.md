@@ -54,6 +54,19 @@ Fuente de verdad para las convenciones LGA:
 - Si la compilacion falla, intentar corregir el problema SIN limpiar primero.
 - El servidor Python (`init.py`, `LGA_QtAdapter_OpenInNukeX.py`) NO se compila — solo se recarga NukeX para probarlo.
 
+## Instalación del plugin Nuke
+
+- El componente Python se instala como `~/.nuke/LGA_OpenInNukeX` y el
+  `init.py` global debe contener exactamente
+  `nuke.pluginAddPath("./LGA_OpenInNukeX")`.
+- Los instaladores de este componente viven en
+  `LGA_Release/Installers/LGA_OpenInNukeX-Nuke/` y no deben compilar, instalar
+  ni modificar el cliente Qt/C++.
+- El ZIP de Windows incluye el instalador Nuke `.bat`/`.ps1` junto al setup
+  Qt; el ZIP de macOS incluye el `.sh` junto a la app.
+- Validar siempre que el servidor siga activándose solo en NukeX, no en Nuke,
+  Nuke Indie, Hiero ni Nuke Studio.
+
 ## Politica de idioma
 
 Convencion LGA cross-app:

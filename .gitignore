@@ -12,5 +12,7 @@ installer_output/
 *.log
 logs/
 .codex/
-.cursor/
+.cursor/*
+Agents.md
+Claude.md
 +Building_Blocks/

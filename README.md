@@ -1,7 +1,7 @@
 <p>
   <img src="Doc_Media/image1.png" alt="LGA OpenInNukeX logo" width="56" height="56" align="left" style="margin-right:8px;">
   <span style="font-size:1.6em;font-weight:700;line-height:1;">LGA OPENINNUKEX</span><br>
-  <span style="font-style:italic;line-height:1;">Lega | v1.71</span><br>
+  <span style="font-style:italic;line-height:1;">Lega | v1.73</span><br>
 </p>
 <br clear="left">
 
@@ -38,7 +38,11 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 
 ## Instalación
 
-- Copiar la carpeta **LGA_OpenInNukeX** a **%USERPROFILE%/.nuke** en Windows o a **~/.nuke** en macOS.<br> Debería quedar así:
+- Para instalar el componente de Nuke, ejecutar `installer_nuke_win.bat` en
+  Windows o `installer_nuke_mac.sh` en macOS. El instalador valida el payload,
+  respalda una instalación anterior y configura el `init.py` global sin
+  duplicar el plugin path.
+- Como alternativa manual, copiar la carpeta **LGA_OpenInNukeX** a **%USERPROFILE%/.nuke** en Windows o a **~/.nuke** en macOS.<br> Debería quedar así:
   ```
   .nuke/
   └─ LGA_OpenInNukeX/
@@ -46,7 +50,7 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
      └─ LGA_QtAdapter_OpenInNukeX.py
   ```
 
-- Con un editor de texto, agregar esta línea al archivo **init.py** que está dentro de la carpeta **.nuke**:
+- Si se usa la alternativa manual, agregar esta línea al archivo **init.py** que está dentro de la carpeta **.nuke**:
 
   ```python
   nuke.pluginAddPath('./LGA_OpenInNukeX')
