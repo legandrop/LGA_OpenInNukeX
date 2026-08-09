@@ -26,12 +26,19 @@ desplegable.
 | Camino | Quién lo usa | Código |
 |---|---|---|
 | Botón **INSTALL** | el usuario, desde la ventana de config | `src/nukebridge.cpp` |
-| `installer_mac.sh` | **PipeSync**, desde su card de LGA Updates | `QtClient/installer_mac.sh` |
+| `installer_mac.sh` | **PipeSync**, desde su card de LGA Updates | `~/.nuke/LGA_Release/Installers/LGA_OpenInNukeX-Nuke/` |
 | Panel manual | el usuario cuando los otros dos no aplican (permisos, carpeta rara, red) | export + tres pasos |
 
-Los tres hacen lo mismo y **ninguno reescribe el `init.py` del usuario**: solo appendean su
-línea, y solo si no está. Ese archivo puede tener toda la configuración de Nuke de esa
-persona.
+Los tres llegan al mismo resultado, pero **no hacen lo mismo con el `init.py`**, y la
+diferencia importa:
+
+- El botón INSTALL y el panel manual **solo appendean** la línea, y solo si no está activa.
+- El `installer_mac.sh` del release usa el motor común, que además **reordena los imports
+  LGA** al orden canónico del ecosistema (`Installers/Common/i_mac_plugin_engine.sh`), deja un
+  backup en `init.py.lga_bak` y revierte si algo falla.
+
+Ninguno reescribe la configuración propia del usuario: el motor respeta las líneas indentadas
+—las que viven dentro de un `if`— y no toca los paths ajenos.
 
 ## Los contratos que NO se pueden cambiar de este lado
 
@@ -54,6 +61,21 @@ PipeSync busca ese nombre exacto, recursivamente, dentro del zip extraído, y lo
 `/bin/bash <ruta> --non-interactive --nuke-dir <carpeta>`. En Windows el nombre que busca es
 `i_win_engine.ps1`.
 
+Este producto los tenía como `installer_nuke_mac.sh` / `i_nuke_win_engine.ps1` —el único de
+los siete que se desviaba de la convención—, y por eso **PipeSync nunca pudo instalarlo desde
+su card en ninguna de las dos plataformas**. Los mismos tres nombres los exige el script de
+release común (`Installers/Common/r_*_plugin_release.*`), así que este producto tampoco podía
+empaquetarse con él.
+
+**El instalador NO vive en este repo.** Es un wrapper por producto que vive en
+`~/.nuke/LGA_Release/Installers/LGA_OpenInNukeX-Nuke/` y forwardea al motor común
+`Installers/Common/i_mac_plugin_engine.sh` — transaccional, con backup, rollback, validación
+de archivos obligatorios y el ordenamiento de imports LGA del `init.py` que respeta las líneas
+indentadas dentro de un `if` (el fix de la v1.76). `deploy.sh` los copia de ahí al armar el
+zip y **corta si el repo de release no está**. Hubo una primera versión de esto escrita a mano
+dentro de `QtClient/`: era una segunda implementación del mismo instalador, sin backup ni
+rollback, y se eliminó.
+
 **4. El asset del release se llama `LGA_OpenInNukeX_v<version>_mac.zip`.** Es el patrón que
 declara `UpdateCatalog.cpp` de PipeSync. No sigue la convención genérica
 `<App>_Mac_v<version>.zip` del template, y es a propósito: la convención dice "el nombre que
@@ -65,10 +87,13 @@ Igual que la del `_win.zip` que ya se publicaba: el release lleva **la app y el 
 Nuke juntos**, porque hay un solo release para las dos cosas.
 
 ```
-LGA_OpenInNukeX/        init.py + LGA_QtAdapter_OpenInNukeX.py + VERSION
-installer_mac.sh        el entry point que invoca PipeSync
-LGA OpenInNukeX.app     la aplicación, firmada ad-hoc
+LGA_OpenInNukeX/         init.py + LGA_QtAdapter_OpenInNukeX.py + VERSION
+installer_mac.sh         el entry point que invoca PipeSync
+i_mac_plugin_engine.sh   el motor común al que forwardea
+LGA OpenInNukeX.app      la aplicación, firmada ad-hoc
 ```
+
+Los dos scripts salen del repo de release, no de este: ver el contrato 3.
 
 El payload del zip se toma **del bundle ya firmado**, no del repo: así lo que se publica es
 exactamente lo que la app instala, y no dos copias que puedan divergir.

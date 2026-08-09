@@ -12,9 +12,11 @@ set -euo pipefail
 # PipeSync descarga ese mismo zip, lo extrae y corre el `installer_mac.sh` de adentro para
 # instalar el componente de Nuke — por eso el zip tiene la misma forma que el de Windows:
 #
-#     LGA_OpenInNukeX/      init.py + LGA_QtAdapter_OpenInNukeX.py + VERSION
-#     installer_mac.sh      entry point que invoca PipeSync
-#     LGA OpenInNukeX.app   la aplicacion
+#     LGA_OpenInNukeX/         init.py + LGA_QtAdapter_OpenInNukeX.py + VERSION
+#     installer_mac.sh         entry point que invoca PipeSync (del repo de release)
+#     i_mac_plugin_engine.sh   el motor comun al que forwardea
+#     LGA OpenInNukeX.app      la aplicacion
+#     install.pdf              el instructivo
 #
 # Y por eso el NOMBRE del archivo es `LGA_OpenInNukeX_v<version>_mac.zip` y no
 # `..._Mac_v<version>.zip` como dice la convencion generica: es el patron que el catalogo de
@@ -203,8 +205,32 @@ if [ "$CREATE_ZIP" = "true" ]; then
     cp "$BUNDLE_PAYLOAD/LGA_QtAdapter_OpenInNukeX.py" "$STAGE/$PLUGIN_FOLDER/"
     printf '%s\n' "$APP_VERSION" > "$STAGE/$PLUGIN_FOLDER/VERSION"
 
-    cp installer_mac.sh "$STAGE/installer_mac.sh"
-    chmod +x "$STAGE/installer_mac.sh"
+    # El instalador NO es de esta app: es el wrapper por producto del repo de release, que
+    # forwardea al motor comun `i_mac_plugin_engine.sh` —transaccional, con backup, rollback y
+    # validacion del init.py—. Los nombres de los tres archivos son fijos: son los que busca el
+    # card de LGA Updates de PipeSync (`UpdateRunner::locateEngine`).
+    #
+    # Se toman del deposito y NO se copian a este repo: una copia propia es una segunda
+    # implementacion del mismo instalador que se desincroniza, y la primera version de esto fue
+    # exactamente eso — sin backup ni rollback.
+    INSTALLER_SRC="$REPO_ROOT/../LGA_Release/Installers/LGA_OpenInNukeX-Nuke/installer_mac.sh"
+    ENGINE_SRC="$REPO_ROOT/../LGA_Release/Installers/Common/i_mac_plugin_engine.sh"
+    for required in "$INSTALLER_SRC" "$ENGINE_SRC"; do
+        if [ ! -f "$required" ]; then
+            echo "ERROR: falta $required"
+            echo "       El zip lo necesita para que PipeSync pueda instalar el componente de"
+            echo "       Nuke desde su card. Clona/actualiza el repo LGA_Release al lado."
+            exit 1
+        fi
+    done
+    cp "$INSTALLER_SRC" "$STAGE/installer_mac.sh"
+    cp "$ENGINE_SRC" "$STAGE/i_mac_plugin_engine.sh"
+    chmod +x "$STAGE/installer_mac.sh" "$STAGE/i_mac_plugin_engine.sh"
+
+    # El instructivo va adentro del zip, igual que en el de Windows.
+    if [ -f "$REPO_ROOT/install.pdf" ]; then
+        cp "$REPO_ROOT/install.pdf" "$STAGE/install.pdf"
+    fi
 
     ditto "deploy/${APP_NAME}.app" "$STAGE/${APP_NAME}.app"
 
@@ -231,7 +257,8 @@ if [ "$CREATE_ZIP" = "true" ]; then
         echo "ERROR: la firma del .app dentro del zip no verifica."
         ZIP_OK=false
     fi
-    if [ ! -f "$CHECK_DIR/installer_mac.sh" ] || [ ! -f "$CHECK_DIR/$PLUGIN_FOLDER/VERSION" ]; then
+    if [ ! -f "$CHECK_DIR/installer_mac.sh" ] || [ ! -f "$CHECK_DIR/i_mac_plugin_engine.sh" ] \
+       || [ ! -f "$CHECK_DIR/$PLUGIN_FOLDER/VERSION" ]; then
         echo "ERROR: al zip le falta installer_mac.sh o el payload del bridge —"
         echo "       PipeSync no podria instalar el componente de Nuke desde este release."
         ZIP_OK=false
