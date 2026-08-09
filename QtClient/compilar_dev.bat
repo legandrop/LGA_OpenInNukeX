@@ -4,6 +4,13 @@ setlocal EnableExtensions
 set "FORCE_CLEAN=false"
 set "NO_DEPLOY=false"
 set "NO_RUN=false"
+REM CONVENCION LGA - el build de desarrollo (Debug) y el de release viven en arboles
+REM SEPARADOS. Con un arbol solo, alternar entre trabajar y empaquetar invalida la cache de
+REM CMake y obliga a recompilar todo cada vez.
+set "BUILD_TYPE=Debug"
+set "BUILD_SUBDIR=build"
+set "WAIT_FOR_APP=false"
+set "SIM_SLOW=false"
 set "PARALLEL_CORES=%NUMBER_OF_PROCESSORS%"
 
 :parse_args
@@ -11,6 +18,9 @@ if "%~1"=="" goto main
 if /I "%~1"=="--force-clean" ( set "FORCE_CLEAN=true" & shift & goto parse_args )
 if /I "%~1"=="--no-deploy" ( set "NO_DEPLOY=true" & shift & goto parse_args )
 if /I "%~1"=="--no-run" ( set "NO_RUN=true" & shift & goto parse_args )
+if /I "%~1"=="--release" ( set "BUILD_TYPE=Release" & set "BUILD_SUBDIR=build-release" & shift & goto parse_args )
+if /I "%~1"=="--wait" ( set "WAIT_FOR_APP=true" & shift & goto parse_args )
+if /I "%~1"=="--sim-slow" ( set "SIM_SLOW=true" & shift & goto parse_args )
 if /I "%~1"=="--parallel" (
     if "%~2"=="" (
         echo ERROR: --parallel requiere una cantidad de nucleos.
@@ -29,9 +39,18 @@ goto show_help_error
 :show_help
 echo Uso: %~nx0 [opciones]
 echo.
-echo   --force-clean   Elimina build antes de configurar.
+echo   --release       Compila en Release, en el arbol build-release\ (lo usa deploy.bat).
+echo                   Por defecto compila en Debug, en build\. Los dos arboles son
+echo                   SEPARADOS para que pedir un release no invalide la cache de dev.
+echo   --force-clean   Elimina el arbol de build antes de configurar.
 echo   --no-deploy     Omite windeployqt y copia de runtimes.
 echo   --no-run        Compila pero no ejecuta la aplicacion.
+echo   --wait          Deja la app en primer plano: la consola queda retenida hasta
+echo                   cerrarla y se ve su salida. Por defecto se lanza suelta.
+echo   --sim-slow      Lanza la app SIMULANDO UNA MAQUINA LENTA: prioridad idle y solo
+echo                   2 nucleos. Los procesos hijos heredan la politica. Windows no
+echo                   permite throttlear el I/O de disco, asi que sus numeros NO son
+echo                   comparables con los de macOS.
 echo   --parallel N    Usa N procesos de compilacion.
 exit /b 0
 
@@ -41,7 +60,7 @@ exit /b 1
 
 :main
 for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
-set "BUILD_DIR=%QTCLIENT_DIR%\build"
+set "BUILD_DIR=%QTCLIENT_DIR%\%BUILD_SUBDIR%"
 set "QT_DIR=C:\Qt\6.5.3\mingw_64"
 set "MINGW_DIR=C:\Qt\Tools\mingw1310_64"
 set "NINJA_DIR=C:\Qt\Tools\Ninja"
@@ -84,6 +103,15 @@ if exist "%BUILD_DIR%\CMakeCache.txt" (
         echo Toolchain anterior detectado: el build sera migrado a MinGW 13.1.
         set "FORCE_CLEAN=true"
     )
+    REM Reconfigurar tambien si la cache quedo con OTRO build type. Chequear solo la
+    REM existencia del CMakeCache alcanzaba con un arbol unico; con dos, un arbol heredado
+    REM puede tener Debug adentro y compilaria Debug EN SILENCIO al pedirle un release. Nada
+    REM lo delata: el binario se ve igual, pesa parecido y anda, solo que lento y con asserts.
+    findstr /C:"CMAKE_BUILD_TYPE:STRING=%BUILD_TYPE%" "%BUILD_DIR%\CMakeCache.txt" >nul 2>&1
+    if errorlevel 1 (
+        echo La cache no esta en %BUILD_TYPE%: se reconfigura el arbol.
+        set "FORCE_CLEAN=true"
+    )
 )
 
 if /I "%FORCE_CLEAN%"=="true" (
@@ -97,7 +125,7 @@ if not exist "%BUILD_DIR%\CMakeCache.txt" (
     echo Configurando CMake con Ninja, MinGW 13.1 y lld...
     cmake -S "%QTCLIENT_DIR%" -B "%BUILD_DIR%" -G "Ninja" ^
         -DCMAKE_PREFIX_PATH="%QT_DIR%" ^
-        -DCMAKE_BUILD_TYPE=Debug ^
+        -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
         -DCMAKE_CXX_FLAGS_DEBUG="-g -O0 -Wno-unused-parameter" ^
         -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" ^
         -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld"
@@ -106,7 +134,7 @@ if not exist "%BUILD_DIR%\CMakeCache.txt" (
     echo Reutilizando configuracion incremental existente.
 )
 
-echo Compilando con Ninja (%PARALLEL_CORES% procesos)...
+echo Compilando %BUILD_TYPE% con Ninja (%PARALLEL_CORES% procesos) en %BUILD_SUBDIR%\...
 cmake --build "%BUILD_DIR%" --parallel "%PARALLEL_CORES%"
 if errorlevel 1 exit /b 1
 
@@ -153,6 +181,28 @@ if /I "%NO_RUN%"=="true" (
 
 echo Ejecutando LGA_OpenInNukeX...
 pushd "%BUILD_DIR%" >nul
-start "" "LGA_OpenInNukeX.exe"
+REM CONVENCION LGA - por defecto la app se lanza SUELTA y el script termina enseguida.
+REM Dejarla en primer plano retiene la consola hasta que alguien cierre la ventana a mano,
+REM lo que cuelga al que compila (y a cualquier agente) por tiempo indefinido.
+REM
+REM --sim-slow: /LOW baja la prioridad a idle y /AFFINITY 3 la deja en 2 nucleos. Los
+REM procesos hijos heredan las dos cosas. Windows NO permite throttlear el I/O de disco por
+REM linea de comandos, asi que la degradacion es mas suave que la de macOS y los numeros de
+REM las dos plataformas no se comparan entre si. Ver docs/Doc_SimSlow.md del template.
+if /I "%WAIT_FOR_APP%"=="true" (
+    if /I "%SIM_SLOW%"=="true" (
+        echo --sim-slow: prioridad idle + 2 nucleos ^(simulacion de maquina lenta^)
+        start "" /LOW /AFFINITY 3 /WAIT "LGA_OpenInNukeX.exe"
+    ) else (
+        start "" /WAIT "LGA_OpenInNukeX.exe"
+    )
+) else (
+    if /I "%SIM_SLOW%"=="true" (
+        echo --sim-slow: prioridad idle + 2 nucleos ^(simulacion de maquina lenta^)
+        start "" /LOW /AFFINITY 3 "LGA_OpenInNukeX.exe"
+    ) else (
+        start "" "LGA_OpenInNukeX.exe"
+    )
+)
 popd >nul
 exit /b 0

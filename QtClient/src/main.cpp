@@ -6,6 +6,7 @@
 #include "nukeopener.h"
 #include "configwindow.h"
 #include "logger.h"
+#include "lgaregistry.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NukeApp: subclase de QApplication que captura QFileOpenEvent.
@@ -44,6 +45,13 @@ int main(int argc, char *argv[])
 
     Logger::clearLogFile();
     Logger::logInfo("=== INICIANDO OpenInNukeX ===");
+
+    // Auto-registro en el registro compartido de LGA. Se hace en CADA arranque y no en el
+    // instalador: funciona igual en las dos plataformas, sobrevive a que el usuario mueva la
+    // app de lugar, y en macOS directamente no hay instalador. Si falla, no molesta al
+    // usuario: lo unico que se pierde es que otra app LGA la vea.
+    LgaRegistry::registerThisApp(QStringLiteral("OpenInNukeX"),
+                                 QString::fromLatin1(OPENINNUKEX_VERSION));
     Logger::logInfo(QString("Config dir: %1").arg(
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)));
 

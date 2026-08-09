@@ -1,19 +1,25 @@
 #include "configwindow.h"
 #include <QApplication>
+#include <QClipboard>
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
-#include <QMessageBox>
 #include <QFont>
 #include <QPalette>
 #include <QProcess>
+#include <QScreen>
+#include <QStyle>
 #include <QThread>
 #include <QScrollArea>
 #include <QGroupBox>
 #include <QTimer>
 #include <QSizePolicy>
 #include <QShowEvent>
+#include "appsettings.h"
+#include "dialogs.h"
+#include "dialogstyle.h"
 #include "logger.h"
+#include "nukebridge.h"
 #include "qflowlayout.h"
 
 #ifdef Q_OS_WIN
@@ -22,6 +28,11 @@
 #endif
 
 namespace {
+
+/// Ancho fijo de la ventana. Antes había DOS: 900 en el constructor y 800 en el resize, así
+/// que la ventana cambiaba de ancho sola al terminar el escaneo.
+constexpr int kWindowWidth = 800;
+
 #ifdef Q_OS_WIN
 void applyDarkTitleBar(QWidget *window)
 {
@@ -51,12 +62,36 @@ void applyDarkTitleBar(QWidget *window)
 
 ConfigWindow::ConfigWindow(QWidget *parent)
     : QWidget(parent)
+    , nukePathEdit(nullptr)
+    , browseButton(nullptr)
+    , saveButton(nullptr)
+    , applyButton(nullptr)
+    , descriptionLabel(nullptr)
+    , nukeVersionDescLabel(nullptr)
     , nukeScanner(nullptr)
     , versionsContainer(nullptr)
     , scanningLabel(nullptr)
     , foundVersionsLabel(nullptr)
     , versionsButtonsWidget(nullptr)
     , versionsLayout(nullptr)
+    , foundVersionsCount(0)
+    , scanFinished(false)
+    , bridgeDescLabel(nullptr)
+    , bridgeChipLabel(nullptr)
+    , bridgeDirEdit(nullptr)
+    , bridgeBrowseButton(nullptr)
+    , bridgeInstallButton(nullptr)
+    , bridgeHintLabel(nullptr)
+    , manualToggleButton(nullptr)
+    , manualPanel(nullptr)
+    , manualStepsLabel(nullptr)
+    , manualCodeLabel(nullptr)
+    , exportButton(nullptr)
+    , copyLineButton(nullptr)
+    , copyFeedbackTimer(nullptr)
+    , langEnButton(nullptr)
+    , langEsButton(nullptr)
+    , versionLabel(nullptr)
 {
     Logger::logInfo("=== CONSTRUCTOR ConfigWindow INICIADO ===");
     
@@ -71,14 +106,22 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     // Configurar ventana
     Logger::logInfo("Configurando ventana...");
     setWindowTitle("OpenInNukeX Config");
-    setFixedSize(900, 600);
+    setFixedSize(kWindowWidth, 600);
     Logger::logInfo("✓ Ventana configurada");
 
     // Cargar estilo QSS
     Logger::logInfo("Cargando estilo QSS...");
     loadStyleSheet();
     Logger::logInfo("✓ Estilo QSS cargado");
-    
+
+    // Una sola pasada de texto para toda la ventana, DESPUES del QSS: `retranslateUi()` es
+    // tambien el lugar donde se arman los textos que dependen del estado (el chip del bridge,
+    // el hint, el label del escaner), y `repolish()` necesita la hoja ya aplicada para que el
+    // selector del chip valga.
+    Logger::logInfo("Aplicando textos e inspeccionando el Nuke Bridge...");
+    retranslateUi();
+    Logger::logInfo("✓ Textos aplicados");
+
     // Inicializar y comenzar el escaneo de versiones
     Logger::logInfo("Iniciando proceso de escáner...");
     initializeScanner();
@@ -156,37 +199,34 @@ void ConfigWindow::setupUI()
     fileAssociationLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
     fileAssociationLayout->setContentsMargins(20, 10, 20, 10);
     fileAssociationLayout->setSpacing(10);
-    
-    // Título principal de File Association
+
+    // Título + APPLY en la MISMA fila: el botón actúa sobre todo el bloque, no sobre un
+    // campo, así que abajo del texto quedaba desconectado de lo que hace.
+    QHBoxLayout *fileAssociationHeader = new QHBoxLayout();
+    fileAssociationHeader->setContentsMargins(0, 0, 0, 0);
+    fileAssociationHeader->setSpacing(10);
+
     QLabel *fileAssociationTitle = new QLabel("File Association", fileAssociationGroup);
     fileAssociationTitle->setObjectName("sectionTitle");
-    fileAssociationLayout->addWidget(fileAssociationTitle);
-    fileAssociationLayout->addSpacing(10);
+    fileAssociationHeader->addWidget(fileAssociationTitle);
+    fileAssociationHeader->addStretch();
 
-    // Texto descriptivo
-    descriptionLabel = new QLabel("Associate .nk files with OpenInNukeX to open them directly in your preferred NukeX version", fileAssociationGroup);
-    descriptionLabel->setWordWrap(true);
-    descriptionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }");
-    fileAssociationLayout->addWidget(descriptionLabel);
-    fileAssociationLayout->addSpacing(15);
-
-    // Botón Apply para asociación de archivos
-    QHBoxLayout *applyLayout = new QHBoxLayout();
-    applyLayout->setContentsMargins(0, 0, 0, 0);
-    applyLayout->setSpacing(10);
-    
-    applyButton = new QPushButton("APPLY", this);
+    applyButton = new QPushButton(TR(BtnApply), fileAssociationGroup);
     applyButton->setFixedHeight(40);
     applyButton->setProperty("class", "action");
-    
-    applyLayout->addStretch();
-    applyLayout->addWidget(applyButton);
-    
-    fileAssociationLayout->addLayout(applyLayout);
-    
+    fileAssociationHeader->addWidget(applyButton);
+
+    fileAssociationLayout->addLayout(fileAssociationHeader);
+
+    // Texto descriptivo
+    descriptionLabel = new QLabel(TR(DescFileAssociation), fileAssociationGroup);
+    descriptionLabel->setObjectName("sectionDescription");
+    descriptionLabel->setWordWrap(true);
+    fileAssociationLayout->addWidget(descriptionLabel);
+
     // Agregar el grupo de File Association al layout central
     centralLayout->addWidget(fileAssociationGroup);
-    
+
     // ------------------------------------------------------------------------------------------------
     // Grupo de configuración de Preferred Nuke Version
     QGroupBox *nukeVersionGroup = new QGroupBox(contentWidget);
@@ -200,6 +240,12 @@ void ConfigWindow::setupUI()
     QLabel *nukeVersionTitle = new QLabel("Preferred Nuke Version", nukeVersionGroup);
     nukeVersionTitle->setObjectName("sectionTitle");
     nukeVersionLayout->addWidget(nukeVersionTitle);
+    nukeVersionLayout->addSpacing(4);
+
+    nukeVersionDescLabel = new QLabel(TR(DescNukeVersion), nukeVersionGroup);
+    nukeVersionDescLabel->setObjectName("sectionDescription");
+    nukeVersionDescLabel->setWordWrap(true);
+    nukeVersionLayout->addWidget(nukeVersionDescLabel);
     nukeVersionLayout->addSpacing(10);
 
     // ===== SECCIÓN DE VERSIONES ENCONTRADAS (ARRIBA) =====
@@ -217,15 +263,15 @@ void ConfigWindow::setupUI()
     Logger::logInfo("✓ versionsLayout creado y configurado");
     
     // Etiqueta descriptiva
-    foundVersionsLabel = new QLabel("Choose one of the found versions or browse your own:", versionsContainer);
-    foundVersionsLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }");
+    foundVersionsLabel = new QLabel(TR(ScanChoose), versionsContainer);
+    foundVersionsLabel->setObjectName("sectionDescription");
     foundVersionsLabel->setWordWrap(true);
     versionsLayout->addWidget(foundVersionsLabel);
     Logger::logInfo("✓ foundVersionsLabel creado y agregado");
-    
+
     // Etiqueta de scanning (inicialmente visible)
-    scanningLabel = new QLabel("🔍 Scanning for installed Nuke versions...", versionsContainer);
-    scanningLabel->setStyleSheet("QLabel { color: #4A9EFF; font-size: 15px; font-style: italic; }");
+    scanningLabel = new QLabel(TR(ScanScanning), versionsContainer);
+    scanningLabel->setObjectName("scanStatus");
     versionsLayout->addWidget(scanningLabel);
     Logger::logInfo("✓ scanningLabel creado y agregado");
     
@@ -257,65 +303,457 @@ void ConfigWindow::setupUI()
     
     // Campo de entrada para la ruta de NukeX
     nukePathEdit = new QLineEdit(nukeVersionGroup);
-    nukePathEdit->setPlaceholderText("Path to NukeX executable");
-    
+    nukePathEdit->setPlaceholderText(TR(PlaceholderNukePath));
+
     // Botón Browse para seleccionar la ruta
-    browseButton = new QPushButton("BROWSE", nukeVersionGroup);
+    browseButton = new QPushButton(TR(BtnBrowse), nukeVersionGroup);
     browseButton->setFixedHeight(40);
     browseButton->setProperty("class", "secondary");
-    
+
     // Agregar los elementos al layout horizontal
-    nukePathLayout->addWidget(nukePathEdit);
-    nukePathLayout->addWidget(browseButton);
-    
-    // Agregar el layout horizontal al layout vertical de Nuke Version
-    nukeVersionLayout->addLayout(nukePathLayout);
-    nukeVersionLayout->addSpacing(10);
-    
-
-    
-    // Boton de SAVE (DENTRO del grupo Nuke Version)
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->setContentsMargins(0, 15, 0, 0);
-    buttonLayout->setSpacing(10);
-
-    saveButton = new QPushButton("SAVE", nukeVersionGroup);
+    // SAVE va en la MISMA fila, a la derecha de BROWSE: los dos actuan sobre el campo de al
+    // lado, asi que separarlos en dos filas obligaba a barrer la vista de vuelta para arriba.
+    saveButton = new QPushButton(TR(BtnSave), nukeVersionGroup);
     saveButton->setFixedHeight(40);
     saveButton->setMinimumWidth(70);
     saveButton->setProperty("class", "action");
 
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(saveButton);
+    nukePathLayout->addWidget(nukePathEdit);
+    nukePathLayout->addWidget(browseButton);
+    nukePathLayout->addWidget(saveButton);
 
-    nukeVersionLayout->addLayout(buttonLayout);
-    
+    // Agregar el layout horizontal al layout vertical de Nuke Version
+    nukeVersionLayout->addLayout(nukePathLayout);
+    nukeVersionLayout->addSpacing(10);
+
     // Agregar el grupo de Nuke Version al layout central
     centralLayout->addWidget(nukeVersionGroup);
-    
-    // Agregar un stretch al final para evitar que los widgets se estiren verticalmente
-    centralLayout->addSpacing(-20);
 
-    // Añadir label de versión y autor
-    QLabel *versionLabel = new QLabel(
-        QString("v%1 | Lega").arg(OPENINNUKEX_VERSION),
-        contentWidget);
-    versionLabel->setObjectName("versionLabel"); // Añadir un objectName para posible estilo futuro
-    versionLabel->setStyleSheet("QLabel { color: #8A8A8A; font-size: 15px; }"); // Mismo estilo que descriptionLabel
-    versionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter); // Alinear a la derecha y al centro verticalmente
-    
-    // Crear un layout horizontal para contener el versionLabel y empujarlo a la derecha
-    QHBoxLayout *versionLayout = new QHBoxLayout();
-    versionLayout->addStretch(1); // Empuja el label a la derecha
-    versionLayout->addWidget(versionLabel);
-    versionLayout->setContentsMargins(0, 0, 0, 0); // Márgenes para el layout de la versión
+    // ------------------------------------------------------------------------------------------------
+    // Grupo del Nuke Bridge
+    setupBridgeGroup(contentWidget, centralLayout);
 
-    centralLayout->addLayout(versionLayout); // Añadir el layout de la versión al layout central
-    centralLayout->addSpacing(-40);
+    // ------------------------------------------------------------------------------------------------
+    // Pie: selector de idioma a la izquierda, version a la derecha.
+    QHBoxLayout *footerLayout = new QHBoxLayout();
+    footerLayout->setContentsMargins(4, 0, 4, 0);
+    footerLayout->setSpacing(0);
+
+    langEnButton = new QPushButton("EN", contentWidget);
+    langEsButton = new QPushButton("ES", contentWidget);
+    for (QPushButton *button : {langEnButton, langEsButton}) {
+        button->setProperty("class", "lang");
+        button->setFixedHeight(24);
+        button->setFixedWidth(38);
+        button->setCursor(Qt::PointingHandCursor);
+    }
+    footerLayout->addWidget(langEnButton);
+    footerLayout->addWidget(langEsButton);
+    footerLayout->addStretch(1);
+
+    // La version sale de la macro del CMake, nunca escrita a mano (convencion LGA: la fuente
+    // unica de verdad es el `project(... VERSION ...)`).
+    versionLabel = new QLabel(QString("v%1 | Lega").arg(OPENINNUKEX_VERSION), contentWidget);
+    versionLabel->setObjectName("versionLabel");
+    versionLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    footerLayout->addWidget(versionLabel);
+
+    centralLayout->addLayout(footerLayout);
 
     // Conectar señales y slots
     connect(browseButton, &QPushButton::clicked, this, &ConfigWindow::browseNukePath);
     connect(saveButton, &QPushButton::clicked, this, &ConfigWindow::saveConfiguration);
     connect(applyButton, &QPushButton::clicked, this, &ConfigWindow::applyFileAssociation);
+    connect(langEnButton, &QPushButton::clicked, this,
+            [this]() { setLanguage(I18n::Lang::En); });
+    connect(langEsButton, &QPushButton::clicked, this,
+            [this]() { setLanguage(I18n::Lang::Es); });
+
+    // Marca el idioma activo al arrancar (el que quedo persistido).
+    langEnButton->setProperty("selected", I18n::lang() == I18n::Lang::En);
+    langEsButton->setProperty("selected", I18n::lang() == I18n::Lang::Es);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Nuke Bridge
+// ─────────────────────────────────────────────────────────────────────────────
+
+void ConfigWindow::setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout)
+{
+    QGroupBox *bridgeGroup = new QGroupBox(parent);
+    bridgeGroup->setObjectName("settingsGroup");
+    bridgeGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+
+    QVBoxLayout *bridgeLayout = new QVBoxLayout(bridgeGroup);
+    bridgeLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
+    bridgeLayout->setContentsMargins(20, 10, 20, 10);
+    bridgeLayout->setSpacing(10);
+
+    // Título + chip de estado.
+    QHBoxLayout *bridgeHeader = new QHBoxLayout();
+    bridgeHeader->setContentsMargins(0, 0, 0, 0);
+    bridgeHeader->setSpacing(10);
+
+    QLabel *bridgeTitle = new QLabel("Nuke Bridge", bridgeGroup);
+    bridgeTitle->setObjectName("sectionTitle");
+    bridgeHeader->addWidget(bridgeTitle);
+    bridgeHeader->addStretch();
+
+    bridgeChipLabel = new QLabel(TR(ChipNotInstalled), bridgeGroup);
+    bridgeChipLabel->setObjectName("bridgeChip");
+    bridgeChipLabel->setProperty("state", "off");
+    bridgeHeader->addWidget(bridgeChipLabel);
+
+    bridgeLayout->addLayout(bridgeHeader);
+    bridgeLayout->addSpacing(4);
+
+    bridgeDescLabel = new QLabel(TR(DescNukeBridge), bridgeGroup);
+    bridgeDescLabel->setObjectName("sectionDescription");
+    bridgeDescLabel->setWordWrap(true);
+    bridgeLayout->addWidget(bridgeDescLabel);
+    bridgeLayout->addSpacing(6);
+
+    // Carpeta .nuke + acciones.
+    QHBoxLayout *bridgeDirLayout = new QHBoxLayout();
+    bridgeDirLayout->setContentsMargins(0, 0, 0, 0);
+    bridgeDirLayout->setSpacing(20);
+
+    bridgeDirEdit = new QLineEdit(bridgeGroup);
+    bridgeDirEdit->setPlaceholderText(TR(PlaceholderNukeDir));
+
+    bridgeBrowseButton = new QPushButton(TR(BtnBrowse), bridgeGroup);
+    bridgeBrowseButton->setFixedHeight(40);
+    bridgeBrowseButton->setProperty("class", "secondary");
+
+    bridgeInstallButton = new QPushButton(TR(BtnInstall), bridgeGroup);
+    bridgeInstallButton->setFixedHeight(40);
+    bridgeInstallButton->setMinimumWidth(70);
+    bridgeInstallButton->setProperty("class", "action");
+
+    bridgeDirLayout->addWidget(bridgeDirEdit);
+    bridgeDirLayout->addWidget(bridgeBrowseButton);
+    bridgeDirLayout->addWidget(bridgeInstallButton);
+    bridgeLayout->addLayout(bridgeDirLayout);
+
+    bridgeHintLabel = new QLabel(bridgeGroup);
+    bridgeHintLabel->setObjectName("bridgeHint");
+    bridgeHintLabel->setWordWrap(true);
+    bridgeHintLabel->setTextFormat(Qt::RichText);
+    bridgeLayout->addWidget(bridgeHintLabel);
+
+    // El enlace es un QPushButton plano y no un QLabel con <a href>: así hereda el foco y el
+    // teclado como cualquier otro control, y no hay que manejar linkActivated a mano.
+    manualToggleButton = new QPushButton(TR(LinkManualShow), bridgeGroup);
+    manualToggleButton->setProperty("class", "link");
+    manualToggleButton->setCursor(Qt::PointingHandCursor);
+    manualToggleButton->setFlat(true);
+
+    QHBoxLayout *manualToggleLayout = new QHBoxLayout();
+    manualToggleLayout->setContentsMargins(0, 0, 0, 0);
+    manualToggleLayout->addWidget(manualToggleButton);
+    manualToggleLayout->addStretch(1);
+    bridgeLayout->addLayout(manualToggleLayout);
+
+    // ── panel manual, colapsado por defecto ──────────────────────────────────
+    manualPanel = new QWidget(bridgeGroup);
+    manualPanel->setObjectName("manualPanel");
+    manualPanel->setVisible(false);
+
+    QVBoxLayout *manualLayout = new QVBoxLayout(manualPanel);
+    manualLayout->setContentsMargins(0, 10, 0, 0);
+    manualLayout->setSpacing(10);
+
+    manualStepsLabel = new QLabel(manualPanel);
+    manualStepsLabel->setObjectName("manualSteps");
+    manualStepsLabel->setTextFormat(Qt::RichText);
+    manualStepsLabel->setWordWrap(true);
+    manualLayout->addWidget(manualStepsLabel);
+
+    manualCodeLabel = new QLabel(NukeBridge::pluginAddPathLine(), manualPanel);
+    manualCodeLabel->setObjectName("manualCode");
+    manualCodeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    manualLayout->addWidget(manualCodeLabel);
+
+    QHBoxLayout *manualButtons = new QHBoxLayout();
+    manualButtons->setContentsMargins(0, 0, 0, 0);
+    manualButtons->setSpacing(10);
+
+    exportButton = new QPushButton(TR(BtnExport), manualPanel);
+    exportButton->setFixedHeight(34);
+    exportButton->setProperty("class", "action");
+
+    copyLineButton = new QPushButton(TR(BtnCopyLine), manualPanel);
+    copyLineButton->setFixedHeight(34);
+    copyLineButton->setProperty("class", "secondary");
+
+    manualButtons->addWidget(exportButton);
+    manualButtons->addWidget(copyLineButton);
+    manualButtons->addStretch(1);
+    manualLayout->addLayout(manualButtons);
+
+    bridgeLayout->addWidget(manualPanel);
+
+    centralLayout->addWidget(bridgeGroup);
+
+    // El estado se recalcula también al editar el campo a mano: sin esto, pegar otra `.nuke`
+    // que ya tiene el bridge dejaba el chip en "Not installed" hasta apretar INSTALL.
+    // editingFinished y no textChanged: inspeccionar el disco en cada tecla es trabajo de I/O
+    // en el hilo de UI por cada caracter tipeado.
+    connect(bridgeDirEdit, &QLineEdit::editingFinished, this, &ConfigWindow::refreshBridgeStatus);
+    connect(bridgeBrowseButton, &QPushButton::clicked, this, &ConfigWindow::browseNukeDirectory);
+    connect(bridgeInstallButton, &QPushButton::clicked, this, &ConfigWindow::installBridge);
+    connect(manualToggleButton, &QPushButton::clicked, this, &ConfigWindow::toggleManualPanel);
+    connect(exportButton, &QPushButton::clicked, this, &ConfigWindow::exportBridgeFiles);
+    connect(copyLineButton, &QPushButton::clicked, this, &ConfigWindow::copyPluginLine);
+
+    // El campo arranca con la carpeta que ya conocemos: la registrada por otra app LGA, o la
+    // detectada en el home. Vacío solo si no hay ninguna.
+    bridgeDirEdit->setText(QDir::toNativeSeparators(NukeBridge::currentNukeDirectory()));
+}
+
+void ConfigWindow::repolish(QWidget *widget)
+{
+    if (!widget) {
+        return;
+    }
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->update();
+}
+
+void ConfigWindow::refreshBridgeStatus()
+{
+    if (!bridgeChipLabel) {
+        return;
+    }
+
+    const QString nukeDir = bridgeDirEdit ? bridgeDirEdit->text().trimmed() : QString();
+    const NukeBridge::Status status = NukeBridge::inspect(nukeDir);
+    const QString bundled = NukeBridge::bundledVersion();
+
+    if (!status.installed()) {
+        bridgeChipLabel->setText(TR(ChipNotInstalled));
+        bridgeChipLabel->setProperty("state", "off");
+        bridgeInstallButton->setText(TR(BtnInstall));
+        bridgeInstallButton->setProperty("class", "action");
+    } else if (status.installedVersion.isEmpty()) {
+        // Instalado pero sin `VERSION` legible: pasa con un bridge puesto a mano, con uno de
+        // una versión anterior de la app, o con el archivo sin permiso de lectura.
+        //
+        // Antes este caso caía en el `else` y el chip mostraba en verde la versión que la app
+        // TRAERÍA, no la que hay: el usuario veía "al día" sobre un bridge viejo, que es
+        // exactamente lo que este chip existe para detectar. Se muestra como pendiente.
+        bridgeChipLabel->setText(TR(ChipInstalledUnknown));
+        bridgeChipLabel->setProperty("state", "stale");
+        bridgeInstallButton->setText(TR(BtnReinstall));
+        bridgeInstallButton->setProperty("class", "action");
+    } else if (status.installedVersion != bundled) {
+        // Instalado pero de otra version: el botón vuelve a ser la acción destacada, porque
+        // acá sí hay algo que hacer. Con "Installed" a secas el usuario no se entera.
+        bridgeChipLabel->setText(TR(ChipNeedsUpdate).arg(status.installedVersion));
+        bridgeChipLabel->setProperty("state", "stale");
+        bridgeInstallButton->setText(TR(BtnReinstall));
+        bridgeInstallButton->setProperty("class", "action");
+    } else {
+        bridgeChipLabel->setText(TR(ChipInstalled).arg(status.installedVersion));
+        bridgeChipLabel->setProperty("state", "on");
+        bridgeInstallButton->setText(TR(BtnReinstall));
+        bridgeInstallButton->setProperty("class", "secondary");
+    }
+
+    repolish(bridgeChipLabel);
+    repolish(bridgeInstallButton);
+
+    // La condición mira que la carpeta EXISTA, no sólo que el campo tenga texto: con una ruta
+    // tipeada a mano que no existe, el hint afirmaba haberla encontrado mientras el chip decía
+    // "Not installed" y INSTALL fallaba con "esa carpeta no existe". Tres mensajes, dos de
+    // ellos falsos.
+    if (!QFileInfo(nukeDir).isDir()) {
+        bridgeHintLabel->setText(TR(HintFolderNotFound));
+        bridgeHintLabel->setVisible(true);
+    } else if (!status.installed()) {
+        // toHtmlEscaped: el label es RichText y un path puede traer `&` o `<` (por ejemplo
+        // /Users/x/R&D/.nuke), que sin escapar se renderiza mal o se come el resto del texto.
+        bridgeHintLabel->setText(TR(HintFolderFound).arg(
+            QDir::toNativeSeparators(nukeDir).toHtmlEscaped()));
+        bridgeHintLabel->setVisible(true);
+    } else {
+        // Ya instalado: el hint explicaba qué carpeta usar, y eso ya no aporta nada.
+        bridgeHintLabel->setVisible(false);
+    }
+}
+
+void ConfigWindow::browseNukeDirectory()
+{
+    const QString current = bridgeDirEdit->text().trimmed();
+    const QString startDir = QFileInfo(current).isDir() ? current : QDir::homePath();
+
+    // La `.nuke` está oculta: sin DontUseNativeDialog el panel de macOS no la muestra y el
+    // usuario no puede llegar a ella salvo con Cmd+Shift+. , que casi nadie conoce.
+    QFileDialog dialog(this, TR(PickNukeFolder), startDir);
+    dialog.setFileMode(QFileDialog::Directory);
+    dialog.setOption(QFileDialog::ShowDirsOnly, true);
+    dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+    dialog.setFilter(dialog.filter() | QDir::Hidden);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    const QStringList selected = dialog.selectedFiles();
+    if (selected.isEmpty()) {
+        return;
+    }
+    bridgeDirEdit->setText(QDir::toNativeSeparators(QDir::cleanPath(selected.first())));
+    refreshBridgeStatus();
+}
+
+namespace {
+
+/// El motor devuelve un CODIGO; el texto que ve el usuario sale de la tabla del idioma
+/// activo. Ver el comentario de NukeBridge::Error sobre por que estan separados.
+QString bridgeErrorMessage(NukeBridge::Error error)
+{
+    switch (error) {
+    case NukeBridge::Error::None:           return QString();
+    case NukeBridge::Error::DirMissing:     return TR(MsgBridgeDirMissing);
+    case NukeBridge::Error::SourceRepo:     return TR(MsgBridgeSourceIsTarget);
+    case NukeBridge::Error::PayloadMissing: return TR(MsgBridgePayloadMissing);
+    case NukeBridge::Error::WriteFailed:    return TR(MsgBridgeWriteFailed);
+    }
+    return TR(MsgBridgeWriteFailed);
+}
+
+} // namespace
+
+void ConfigWindow::installBridge()
+{
+    const QString nukeDir = bridgeDirEdit->text().trimmed();
+
+    QString detail;
+    const NukeBridge::Error error = NukeBridge::install(nukeDir, &detail);
+    if (error == NukeBridge::Error::None) {
+        refreshBridgeStatus();
+        Dialogs::info(this, TR(TitleBridgeInstalled),
+                      TR(MsgBridgeInstalled).arg(Dialogs::colorizePath(
+                          QDir::toNativeSeparators(QDir(nukeDir).filePath(
+                              NukeBridge::pluginFolderName())))));
+        return;
+    }
+
+    // El detalle tecnico va al log y NO al cartel: al usuario le sirve saber que hacer, no
+    // que ruta fallo. Al que diagnostica le sirve la ruta, y esa la tiene en el log.
+    Logger::logError(QString("NukeBridge: instalacion fallida en '%1': %2").arg(nukeDir, detail));
+    Dialogs::error(this, TR(TitleBridgeFailed), bridgeErrorMessage(error));
+}
+
+void ConfigWindow::toggleManualPanel()
+{
+    const bool nowVisible = !manualPanel->isVisible();
+    manualPanel->setVisible(nowVisible);
+    manualToggleButton->setText(nowVisible ? TR(LinkManualHide) : TR(LinkManualShow));
+    calculateAndResizeWindow();
+}
+
+void ConfigWindow::exportBridgeFiles()
+{
+    const QString destDir = QFileDialog::getExistingDirectory(
+        this, TR(PickExportFolder), QDir::homePath());
+    if (destDir.isEmpty()) {
+        return;
+    }
+
+    QString detail;
+    const NukeBridge::Error error = NukeBridge::exportPayload(destDir, &detail);
+    if (error == NukeBridge::Error::None) {
+        Dialogs::info(this, TR(TitleBridgeExported),
+                      TR(MsgBridgeExported).arg(Dialogs::colorizePath(
+                          QDir::toNativeSeparators(QDir(destDir).filePath(
+                              NukeBridge::pluginFolderName())))));
+        return;
+    }
+
+    Logger::logError(QString("NukeBridge: exportacion fallida a '%1': %2").arg(destDir, detail));
+    Dialogs::error(this, TR(TitleBridgeFailed), bridgeErrorMessage(error));
+}
+
+void ConfigWindow::copyPluginLine()
+{
+    QApplication::clipboard()->setText(NukeBridge::pluginAddPathLine());
+
+    // El feedback va en el propio botón y no en un cartel: es una confirmación de un gesto
+    // trivial, y un modal para esto obliga a un click extra para volver a lo que se estaba
+    // haciendo.
+    copyLineButton->setText(TR(BtnCopied));
+    if (!copyFeedbackTimer) {
+        copyFeedbackTimer = new QTimer(this);
+        copyFeedbackTimer->setSingleShot(true);
+        connect(copyFeedbackTimer, &QTimer::timeout, this,
+                [this]() { copyLineButton->setText(TR(BtnCopyLine)); });
+    }
+    copyFeedbackTimer->start(1500);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Idioma
+// ─────────────────────────────────────────────────────────────────────────────
+
+void ConfigWindow::setLanguage(I18n::Lang lang)
+{
+    if (I18n::lang() == lang) {
+        return;
+    }
+    I18n::setLang(lang);
+
+    langEnButton->setProperty("selected", lang == I18n::Lang::En);
+    langEsButton->setProperty("selected", lang == I18n::Lang::Es);
+    repolish(langEnButton);
+    repolish(langEsButton);
+
+    retranslateUi();
+    calculateAndResizeWindow();
+}
+
+void ConfigWindow::retranslateUi()
+{
+    applyButton->setText(TR(BtnApply));
+    descriptionLabel->setText(TR(DescFileAssociation));
+
+    nukeVersionDescLabel->setText(TR(DescNukeVersion));
+    nukePathEdit->setPlaceholderText(TR(PlaceholderNukePath));
+    browseButton->setText(TR(BtnBrowse));
+    saveButton->setText(TR(BtnSave));
+
+    // El label del escáner dice cosas distintas según en qué punto esté: reconstruirlo pide
+    // saber en cuál, y por eso el resultado del último escaneo queda guardado.
+    if (!scanFinished) {
+        foundVersionsLabel->setText(TR(ScanChoose));
+        foundVersionsLabel->setVisible(true);
+        scanningLabel->setText(TR(ScanScanning));
+    } else if (foundVersionsCount == 0) {
+        // Sin versiones encontradas, "Elegí una de las encontradas" es falso y además queda
+        // arriba del mensaje que dice que no hay ninguna. Antes tampoco se reescribía al
+        // cambiar de idioma, así que los dos renglones quedaban en idiomas distintos.
+        foundVersionsLabel->setVisible(false);
+        scanningLabel->setText(TR(ScanNone));
+    } else {
+        foundVersionsLabel->setText(TR(ScanFound).arg(foundVersionsCount));
+        foundVersionsLabel->setVisible(true);
+    }
+
+    bridgeDescLabel->setText(TR(DescNukeBridge));
+    bridgeDirEdit->setPlaceholderText(TR(PlaceholderNukeDir));
+    bridgeBrowseButton->setText(TR(BtnBrowse));
+    manualToggleButton->setText(manualPanel->isVisible() ? TR(LinkManualHide)
+                                                         : TR(LinkManualShow));
+    manualStepsLabel->setText(
+        QStringLiteral("<ol style='margin-left:-20px;'><li>%1</li><li>%2</li><li>%3</li></ol>")
+            .arg(TR(ManualStep1), TR(ManualStep2), TR(ManualStep3)));
+    exportButton->setText(TR(BtnExport));
+    copyLineButton->setText(TR(BtnCopyLine));
+
+    // El chip, el hint y el texto del botón de instalar dependen del estado, no solo del
+    // idioma: los reconstruye el mismo lugar que los calcula.
+    refreshBridgeStatus();
 }
 
 void ConfigWindow::loadCurrentPath()
@@ -354,7 +792,7 @@ void ConfigWindow::browseNukePath()
     QString startDir = currentPath.isEmpty() ? "C:/Program Files/" : QDir(currentPath).absolutePath();
     QString selectedPath = QFileDialog::getOpenFileName(
         this,
-        "Select NukeX.exe or Nuke.exe",
+        TR(PickNukeExecutable),
         startDir,
         "Executable Files (*.exe);;All Files (*)");
     if (!selectedPath.isEmpty())
@@ -364,7 +802,7 @@ void ConfigWindow::browseNukePath()
     QString startDir = currentPath.isEmpty() ? "/Applications" : QDir(currentPath).absolutePath();
     QString selectedPath = QFileDialog::getOpenFileName(
         this,
-        "Select Nuke application or binary",
+        TR(PickNukeExecutable),
         startDir,
         "All Files (*)");
     if (!selectedPath.isEmpty()) {
@@ -385,14 +823,15 @@ void ConfigWindow::saveConfiguration()
 
     if (nukePath.isEmpty())
     {
-        QMessageBox::warning(this, "Error", "Please select a valid path for NukeX.");
+        // TitleWarning y no TitleError: no es un error, es un requisito sin cumplir.
+        Dialogs::warn(this, TR(TitleWarning), TR(MsgPathEmpty));
         return;
     }
 
     // Verificar que el archivo existe
     if (!QFile::exists(nukePath))
     {
-        QMessageBox::warning(this, "Error", "The selected file does not exist.");
+        Dialogs::error(this, TR(TitleError), TR(MsgPathMissing));
         return;
     }
 
@@ -400,7 +839,7 @@ void ConfigWindow::saveConfiguration()
     QString fileName = QFileInfo(nukePath).fileName().toLower();
     if (!fileName.contains("nuke"))
     {
-        QMessageBox::warning(this, "Warning", "The selected file does not appear to be a Nuke executable.");
+        Dialogs::warn(this, TR(TitleWarning), TR(MsgNotNukeExecutable));
     }
 
 #ifndef Q_OS_WIN
@@ -416,10 +855,10 @@ void ConfigWindow::saveConfiguration()
 
     saveNukePath(nukePath);
 
-    QMessageBox::information(this, "Configuration Saved", "The NukeX path has been saved successfully.");
-
-    // Cerrar la aplicación
-    // QApplication::quit();
+    // El path va coloreado y en su PROPIA linea, debajo del texto (convencion de Doc_Dialogs):
+    // metido en el medio de la oracion se corta por donde cae el wrap y se vuelve ilegible.
+    Dialogs::info(this, TR(TitleSaved),
+                  TR(MsgSaved).arg(Dialogs::colorizePath(QDir::toNativeSeparators(nukePath))));
 }
 
 void ConfigWindow::saveNukePath(const QString &path)
@@ -446,13 +885,13 @@ void ConfigWindow::applyFileAssociation()
 
     if (nukePath.isEmpty()) {
         Logger::logError("Error: Ruta de NukeX vacía");
-        QMessageBox::warning(this, "Error", "Please select a valid path for NukeX first.");
+        Dialogs::warn(this, TR(TitleWarning), TR(MsgPathEmpty));
         return;
     }
 
     if (!QFile::exists(nukePath)) {
         Logger::logError(QString("Error: El archivo no existe: %1").arg(nukePath));
-        QMessageBox::warning(this, "Error", "The selected file does not exist.");
+        Dialogs::error(this, TR(TitleError), TR(MsgPathMissing));
         return;
     }
 
@@ -462,15 +901,24 @@ void ConfigWindow::applyFileAssociation()
 #ifdef Q_OS_WIN
     try {
         Logger::logInfo("Ejecutando comandos de registro (Windows)");
-        executeRegistryCommands();
-        Logger::logInfo("Asociación completada exitosamente");
-        QMessageBox::information(this, "Association Completed",
-            "The .nk file association has been successfully configured.\n\n"
-            "You can now double-click .nk files to open them with NukeX.");
+        // UN SOLO cartel al final, no dos. Antes executeRegistryCommands() mostraba su propia
+        // advertencia con los errores y despues, de vuelta aca, salia el "ya podes hacer doble
+        // click" — o sea que con SetUserFTA.exe faltante (el caso comun) el usuario veia el
+        // aviso de que fallo e inmediatamente uno diciendole que funcionaba.
+        const QStringList errors = executeRegistryCommands();
+        if (errors.isEmpty()) {
+            Logger::logInfo("Asociación completada exitosamente");
+            Dialogs::info(this, TR(TitleAssocDone), TR(MsgAssocDone));
+        } else {
+            Logger::logError(QString("Asociación con errores: %1").arg(errors.join("; ")));
+            // El cuerpo del mensaje va gris y SOLO lo que fallo va en blanco.
+            Dialogs::warn(this, TR(TitleAssocWarnings),
+                          DialogStyle::emphasis(errors.join(QStringLiteral("<br>"))));
+        }
     } catch (const std::exception& e) {
         Logger::logError(QString("Excepción durante asociación: %1").arg(e.what()));
-        QMessageBox::critical(this, "Error",
-            QString("Error configuring file association:\n%1").arg(e.what()));
+        Dialogs::error(this, TR(TitleError),
+                       QString::fromUtf8(e.what()));
     }
 #else
     executeMacAssociation();
@@ -526,7 +974,7 @@ bool ConfigWindow::executeCommand(const QString &program, const QStringList &arg
 // ─── Windows-only: registry functions ────────────────────────────────────────
 #ifdef Q_OS_WIN
 
-void ConfigWindow::executeRegistryCommands()
+QStringList ConfigWindow::executeRegistryCommands()
 {
     Logger::logInfo("=== EJECUTANDO COMANDOS DE REGISTRO ===");
     QStringList errors;
@@ -558,13 +1006,6 @@ void ConfigWindow::executeRegistryCommands()
         Logger::logInfo("PASO 3 COMPLETADO");
     }
 
-    if (!errors.isEmpty()) {
-        Logger::logError(QString("Se encontraron errores: %1").arg(errors.join("; ")));
-        QMessageBox::warning(this, "Warnings",
-            "Some issues were found:\n" + errors.join("\n") +
-            "\n\nFile association may not work completely.");
-    }
-
     Logger::logInfo("PASO 4: Notificando cambios al Explorador...");
     if (executeCommand("rundll32.exe",
             QStringList() << "shell32.dll,SHChangeNotify" << "0x08000000,0x0000,0,0")) {
@@ -574,6 +1015,10 @@ void ConfigWindow::executeRegistryCommands()
     }
 
     Logger::logInfo("=== COMANDOS DE REGISTRO COMPLETADOS ===");
+
+    // Los errores se DEVUELVEN, no se muestran: el cartel lo arma quien llama, que es el
+    // unico que sabe si ademas hay algo mas que decir.
+    return errors;
 }
 
 bool ConfigWindow::cleanRegistry()
@@ -766,18 +1211,9 @@ void ConfigWindow::executeMacAssociation()
     }
 
     if (dutiSuccess) {
-        QMessageBox::information(this, "Association Completed",
-            "The .nk file association has been successfully configured.\n\n"
-            "You can now double-click .nk files to open them with LGA_OpenInNukeX.");
+        Dialogs::info(this, TR(TitleAssocDone), TR(MsgAssocDone));
     } else {
-        QMessageBox::information(this, "Almost done!",
-            "The app has been registered with your system.\n\n"
-            "To set LGA_OpenInNukeX as the default app for .nk files:\n\n"
-            "1. Right-click any .nk file in Finder\n"
-            "2. Choose \"Get Info\"  (Cmd+I)\n"
-            "3. Under \"Open with:\", select LGA_OpenInNukeX\n"
-            "4. Click \"Change All...\"\n\n"
-            "Tip: install duti via Homebrew (brew install duti) to automate this step.");
+        Dialogs::info(this, TR(TitleAssocAlmost), TR(MsgAssocAlmost));
     }
 }
 
@@ -856,8 +1292,13 @@ void ConfigWindow::onScanStarted()
     Logger::logInfo("=== EVENTO: ESCANEO INICIADO ===");
     Logger::logInfo("Actualizando UI para mostrar estado de scanning...");
     
+    scanFinished = false;
+    foundVersionsCount = 0;
+
     if (scanningLabel) {
-        scanningLabel->setText("🔍 Scanning for installed Nuke versions...");
+        scanningLabel->setText(TR(ScanScanning));
+        scanningLabel->setProperty("state", "busy");
+        repolish(scanningLabel);
         scanningLabel->setVisible(true);
         Logger::logInfo("✓ scanningLabel actualizado y mostrado");
     } else {
@@ -879,7 +1320,7 @@ void ConfigWindow::onScanProgress(const QString &currentPath)
         if (shortPath.length() > 50) {
             shortPath = "..." + shortPath.right(47);
         }
-        scanningLabel->setText(QString("🔍 Scanning: %1").arg(shortPath));
+        scanningLabel->setText(TR(ScanScanningPath).arg(shortPath));
     }
 }
 
@@ -892,7 +1333,12 @@ void ConfigWindow::onVersionFound(const NukeVersion &version)
 void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
 {
     Logger::logInfo(QString("=== EVENTO: ESCANEO COMPLETADO - %1 versiones encontradas ===").arg(versions.size()));
-    
+
+    // Se guardan para poder rearmar los labels al cambiar de idioma: llevan la cantidad
+    // adentro del texto, asi que no alcanza con volver a pedir el string traducido.
+    scanFinished = true;
+    foundVersionsCount = versions.size();
+
     // Ocultar mensaje de scanning
     if (scanningLabel) {
         scanningLabel->setVisible(false);
@@ -905,8 +1351,9 @@ void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
         Logger::logInfo("No se encontraron versiones - mostrando mensaje de error");
         // No se encontraron versiones
         if (scanningLabel) {
-            scanningLabel->setText("❌ No Nuke installations found in common locations");
-            scanningLabel->setStyleSheet("QLabel { color: #FF6B6B; font-size: 15px; font-style: italic; }");
+            scanningLabel->setText(TR(ScanNone));
+            scanningLabel->setProperty("state", "empty");
+            repolish(scanningLabel);
             scanningLabel->setVisible(true);
             Logger::logInfo("✓ Mensaje de 'no encontrado' mostrado");
         }
@@ -927,7 +1374,7 @@ void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
     
     // Actualizar mensaje descriptivo
     if (foundVersionsLabel) {
-        foundVersionsLabel->setText(QString("%1 Nuke versions found:").arg(versions.size()));
+        foundVersionsLabel->setText(TR(ScanFound).arg(versions.size()));
         Logger::logInfo("✓ foundVersionsLabel actualizado");
     } else {
         Logger::logError("ERROR: foundVersionsLabel es nullptr al actualizar");
@@ -1003,7 +1450,23 @@ void ConfigWindow::onVersionButtonClicked()
 void ConfigWindow::calculateAndResizeWindow()
 {
     Logger::logInfo("=== CALCULANDO Y REDIMENSIONANDO VENTANA ===");
-    
+
+    // El `processEvents()` de abajo despacha eventos pendientes, y entre ellos puede venir un
+    // click sobre INSTALL o sobre el propio toggle del panel manual — que vuelve a entrar acá
+    // mientras la pasada anterior no terminó (y en el caso de INSTALL, abre un modal desde
+    // adentro del resize). El guard corta la reentrada; la pasada de afuera termina el
+    // trabajo igual.
+    static bool resizing = false;
+    if (resizing) {
+        Logger::logInfo("Resize reentrante ignorado");
+        return;
+    }
+    resizing = true;
+    struct ResizeGuard {
+        bool& flag;
+        ~ResizeGuard() { flag = false; }
+    } guard{resizing};
+
     // Forzar que todos los widgets calculen su tamaño
     this->updateGeometry();
     QApplication::processEvents();
@@ -1024,9 +1487,20 @@ void ConfigWindow::calculateAndResizeWindow()
     int scrollBarSpace = 20; // Espacio para posible scroll bar
     int totalHeight = contentHeight + margins + scrollBarSpace;
     
-    // Establecer límites mínimos y máximos
+    // Establecer límites mínimos y máximos. El máximo subió al agregarse el tercer bloque
+    // (con el panel manual desplegado el contenido no entraba en 1000), pero el techo real es
+    // la PANTALLA: la ventana es de tamaño fijo, así que una altura mayor que el escritorio
+    // deja el pie —el selector de idioma y la versión— abajo del borde y sin forma de
+    // llegar. Medido: con el panel manual abierto en un portátil, el pie desaparecía.
+    // Cuando no entra, el QScrollArea que ya envuelve el contenido se hace cargo.
     int minHeight = 400;
-    int maxHeight = 1000;
+    int maxHeight = 1200;
+    if (QScreen *screen = this->screen()) {
+        const int usable = screen->availableGeometry().height() - 60;
+        if (usable > minHeight) {
+            maxHeight = qMin(maxHeight, usable);
+        }
+    }
     
     // Ajustar dentro de los límites
     if (totalHeight < minHeight) {
@@ -1039,8 +1513,24 @@ void ConfigWindow::calculateAndResizeWindow()
     
     Logger::logInfo(QString("Altura final calculada: %1").arg(totalHeight));
     
-    // Redimensionar la ventana manteniendo el ancho fijo de 900px
-    this->setFixedSize(800, totalHeight);
-    
-    Logger::logInfo(QString("Ventana redimensionada a: 900x%1").arg(totalHeight));
+    // Redimensionar la ventana manteniendo el ancho fijo
+    this->setFixedSize(kWindowWidth, totalHeight);
+
+    Logger::logInfo(QString("Ventana redimensionada a: %1x%2").arg(kWindowWidth).arg(totalHeight));
+
+    // Clampear la altura NO alcanza: la ventana crece hacia ABAJO desde donde ya estaba, así
+    // que una que entra en la pantalla igual puede terminar con el pie por debajo del borde.
+    // Medido: 1024 px de alto arrancando en y=224, sobre un escritorio de 1117 — el selector
+    // de idioma quedaba fuera y, al ser la ventana de tamaño fijo, no había forma de llegar.
+    if (QScreen *screen = this->screen()) {
+        const QRect available = screen->availableGeometry();
+        const QRect frame = frameGeometry();
+        if (frame.bottom() > available.bottom()) {
+            const int desiredTop = qMax(available.top(), available.bottom() - frame.height());
+            // Se mueve por DELTA sobre la posición del cliente: frameGeometry() incluye la
+            // barra de título, así que un move() con su `top` correría la ventana de más.
+            move(x(), y() + (desiredTop - frame.top()));
+            Logger::logInfo(QString("Ventana reubicada para entrar en la pantalla (y=%1)").arg(y()));
+        }
+    }
 }

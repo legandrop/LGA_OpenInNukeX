@@ -16,11 +16,13 @@
 #include <QScrollArea>
 #include <QGroupBox>
 #include "qflowlayout.h"
+#include "i18n.h"
 #include "logger.h"
 #include "nukescanner.h"
 
 class QFlowLayout;
 class QShowEvent;
+class QTimer;
 
 class ConfigWindow : public QWidget
 {
@@ -42,6 +44,13 @@ private slots:
     void onScanFinished(const QList<NukeVersion> &versions);
     void onVersionButtonClicked();
 
+    // Nuke Bridge
+    void browseNukeDirectory();
+    void installBridge();
+    void toggleManualPanel();
+    void exportBridgeFiles();
+    void copyPluginLine();
+
 private:
     void setupUI();
     void loadCurrentPath();
@@ -55,8 +64,23 @@ private:
     void createVersionButtons(const QList<NukeVersion> &versions);
     void calculateAndResizeWindow();
 
+    // Idioma
+    void setLanguage(I18n::Lang lang);
+    /// Reescribe TODO string visible. Es la contracara de no usar tr(): los textos ya estan
+    /// adentro de los widgets, asi que cambiar el idioma es volver a setearlos uno por uno.
+    void retranslateUi();
+
+    // Nuke Bridge
+    void setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout);
+    void refreshBridgeStatus();
+    /// Refresca el `class`/`state` de un widget para que el QSS vuelva a evaluar el selector:
+    /// cambiar la propiedad sola no repinta nada.
+    static void repolish(QWidget *widget);
+
 #ifdef Q_OS_WIN
-    void executeRegistryCommands();
+    /// Devuelve la lista de pasos que fallaron (vacia si salio todo bien). No muestra
+    /// ningun cartel: eso lo hace el llamador, para que salga UNO solo.
+    QStringList executeRegistryCommands();
     bool cleanRegistry();
     bool registerProgId();
     bool setFileAssociation();
@@ -71,6 +95,7 @@ private:
     QPushButton *saveButton;
     QPushButton *applyButton;
     QLabel *descriptionLabel;
+    QLabel *nukeVersionDescLabel;
 
     // Scanner de versiones
     NukeScanner *nukeScanner;
@@ -79,6 +104,30 @@ private:
     QLabel *foundVersionsLabel;
     QWidget *versionsButtonsWidget;
     QVBoxLayout *versionsLayout;
+    /// Cuantas versiones encontro el ultimo escaneo: `retranslateUi()` necesita el numero
+    /// para volver a armar el label, que lleva la cantidad adentro del texto.
+    int foundVersionsCount;
+    bool scanFinished;
+
+    // Nuke Bridge
+    QLabel *bridgeDescLabel;
+    QLabel *bridgeChipLabel;
+    QLineEdit *bridgeDirEdit;
+    QPushButton *bridgeBrowseButton;
+    QPushButton *bridgeInstallButton;
+    QLabel *bridgeHintLabel;
+    QPushButton *manualToggleButton;
+    QWidget *manualPanel;
+    QLabel *manualStepsLabel;
+    QLabel *manualCodeLabel;
+    QPushButton *exportButton;
+    QPushButton *copyLineButton;
+    QTimer *copyFeedbackTimer;
+
+    // Pie
+    QPushButton *langEnButton;
+    QPushButton *langEsButton;
+    QLabel *versionLabel;
 };
 
 #endif // CONFIGWINDOW_H

@@ -28,7 +28,11 @@ def _write(path: Path, content: str, original: str) -> None:
     if content == original:
         return
     newline = "\r\n" if "\r\n" in original else "\n"
-    path.write_text(content, encoding="utf-8", newline=newline)
+    # open() y no Path.write_text(newline=...): ese parametro existe recien en Python 3.10, y
+    # el python3 que trae macOS es 3.9. El bug estaba latente porque solo salta cuando hay
+    # algo que escribir de verdad; con las versiones ya sincronizadas nunca se llegaba aca.
+    with open(path, "w", encoding="utf-8", newline=newline) as handle:
+        handle.write(content)
 
 
 def _parse_version(version: str) -> tuple[int, ...]:
@@ -192,13 +196,29 @@ def main() -> int:
     )
     updates.append((INSTALLER_FILE, new_installer, installer))
 
-    for path, updated, original in updates:
-        _write(path, updated, original)
-
     print(f"[sync_version] ChangeLog: {changelog_version}")
     print(f"[sync_version] VERSION:   {file_version}")
     print(f"[sync_version] CMake:     {cmake_current}")
     print(f"[sync_version] Resolved:  {display}")
+
+    # --check-only: NO escribe nada, solo reporta si alguna superficie quedaria distinta.
+    # Lo usa github_release_mac.sh antes de publicar. Sin este modo, el release corria el
+    # sync completo: como el chequeo de working tree limpio ya habia pasado, el script podia
+    # MODIFICAR archivos y despues taggear un commit que no coincide con lo empaquetado.
+    if "--check-only" in sys.argv[1:]:
+        stale = [str(path.relative_to(ROOT_DIR))
+                 for path, updated, original in updates if updated != original]
+        if stale:
+            print("[sync_version] DESINCRONIZADO. Quedarian distintos:")
+            for name in stale:
+                print(f"  - {name}")
+            return 1
+        print("[sync_version] Superficies sincronizadas correctamente (check-only).")
+        return 0
+
+    for path, updated, original in updates:
+        _write(path, updated, original)
+
     print("[sync_version] Superficies sincronizadas correctamente.")
     return 0
 

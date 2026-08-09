@@ -86,13 +86,19 @@ QPushButton.secondary:pressed {
 }
 
 /* Botón de acción (violeta) */
+/*
+ * NO redeclarar `font-size` aca: la familia y el cuerpo salen del `QPushButton` de arriba
+ * (Inter 14px), que es el que se ve bien.
+ *
+ * Antes habia DOS `font-size` en esta misma regla —`11pt` y despues `0.65rem`— y ganaba la
+ * ultima. **Qt Style Sheets no soporta `rem`**: acepta `px`, `pt`, `em` y `ex`. Cada
+ * plataforma resolvia esa unidad invalida a su manera, asi que el boton violeta salia con la
+ * letra diminuta en macOS y con el cuerpo correcto en Windows. Solo queda el peso, que es la
+ * unica diferencia buscada contra el boton gris.
+ */
 QPushButton.action {
     background-color: #443a91; /* violeta_oscuro */
     color: #B2B2B2; /* txt_principal */
-    font-weight: bold;
-    font-size: 11pt;
-    font-family: "Inter", Arial, Helvetica;
-    font-size: 0.65rem;
     font-weight: 700;
 }
 
@@ -296,6 +302,129 @@ QScrollArea#darkScrollArea QWidget#contentSettingsWidget {
 /* Estilo para grupos sin borde */
 QGroupBox#settingsGroup {
     border: none;
+}
+
+/* Texto descriptivo debajo del titulo de cada bloque.
+ * Antes cada label traia su propio setStyleSheet inline con el mismo color repetido; al
+ * unificarlos aca el color de "texto secundario" queda definido en UN solo lugar. */
+QLabel#sectionDescription {
+    color: #8A8A8A;
+    font-size: 15px;
+}
+
+QLabel#versionLabel {
+    color: #8A8A8A;
+    font-size: 15px;
+}
+
+/* Estado del escaner de versiones. El color sale de la propiedad `state` y no de un
+ * setStyleSheet inline, asi que cambiarlo NO pisa el resto de la hoja. */
+QLabel#scanStatus {
+    color: #4A9EFF;
+    font-size: 15px;
+    font-style: italic;
+}
+
+QLabel#scanStatus[state="empty"] {
+    color: #FF6B6B;
+}
+
+/* ------------------------------ Diálogos (Dialogs) ------------------------------ */
+/* Los diálogos se crean con `ConfigWindow` de padre, así que Qt les aplica TAMBIÉN esta hoja
+ * por herencia de la cadena de padres. El `QLabel { padding: 2px 0px; }` de arriba les caía
+ * encima: el icono es un QLabel de 32x32 con un pixmap de 32x32, y ese padding le dejaba un
+ * content rect de 32x28, o sea el icono RECORTADO 2 px arriba y 2 abajo. Al label de texto le
+ * sumaba 4 px de alto que la medición manual del componente no contempla, corriendo justo la
+ * alineación que Doc_Dialogs.md pide medir y no mirar.
+ *
+ * Esto NO es estilo del diálogo —eso vive todo en DialogStyle.h y ahí se queda—: es
+ * neutralizar una regla de ESTA app para que no se derrame sobre un componente compartido. */
+QDialog#lgaDialog QLabel {
+    padding: 0px;
+}
+
+/* ------------------------------ Nuke Bridge ------------------------------ */
+/* Chip de estado. Los tres estados: sin instalar (gris), instalado (verde) y instalado en
+ * otra version (amarillo, porque ahi SI hay algo que hacer). */
+QLabel#bridgeChip {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 3px;
+    background-color: #2a2a2a;
+    color: #9D9D9D;
+}
+
+QLabel#bridgeChip[state="on"] {
+    background-color: #1c2f16;
+    color: #4FBE29;
+}
+
+QLabel#bridgeChip[state="stale"] {
+    background-color: #35300f;
+    color: #D8C43A;
+}
+
+QLabel#bridgeHint {
+    color: #8A8A8A;
+    font-size: 13px;
+}
+
+QWidget#manualPanel {
+    background-color: transparent;
+    border-top: 1px solid #303030;
+}
+
+QLabel#manualSteps {
+    color: #8A8A8A;
+    font-size: 13px;
+}
+
+/* La linea que el usuario tiene que pegar en su init.py: monoespaciada y en su propia caja,
+ * para que se lea como algo a copiar y no como parte de la explicacion. */
+QLabel#manualCode {
+    background-color: #161616;
+    border: 1px solid #303030;
+    border-radius: 3px;
+    padding: 8px 10px;
+    color: #c8c0e8;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+}
+
+/* Enlace de texto: es un QPushButton para heredar foco y teclado, pero no se ve como boton. */
+QPushButton.link {
+    background-color: transparent;
+    color: #4A9EFF;
+    border: none;
+    padding: 2px 0px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+QPushButton.link:hover {
+    color: #7FBBFF;
+}
+
+/* ------------------------------ Selector de idioma ------------------------------ */
+QPushButton.lang {
+    background-color: transparent;
+    border: 1px solid #303030;
+    border-radius: 0px;
+    color: #8A8A8A;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 0px;
+}
+
+QPushButton.lang:hover {
+    color: #B2B2B2;
+}
+
+QPushButton.lang[selected="true"] {
+    background-color: #3a3a3a;
+    color: #D6D6D6;
 }
 
 /* ------------------------------ Estilo general para selección de texto ------------------------------ */

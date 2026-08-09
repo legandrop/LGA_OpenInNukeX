@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(LGA_OpenInNukeX VERSION 1.76.0 LANGUAGES CXX)
+project(LGA_OpenInNukeX VERSION 1.77.0 LANGUAGES CXX)
 
 # Generate compile_commands.json for IntelliSense and clangd.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -51,6 +51,19 @@ endif()
 
 set(CMAKE_AUTOMOC ON)
 
+# ── Nombres (convencion LGA, ver docs/Doc_Deploy_macOS.md del template) ──────
+#   APP_NAME       el `.app` y el ejecutable adentro: empieza con `LGA`, con espacios
+#   APP_MENU_NAME  CFBundleName: la barra de menu y el "About", SIN el prefijo `LGA`
+# El nombre de ARCHIVO de los artefactos (ARTIFACT_NAME) vive en create_dmg.sh / deploy.sh.
+if(APPLE)
+    set(APP_NAME "LGA OpenInNukeX")
+else()
+    # En Windows el ejecutable NO lleva espacios: viaja por el registro, por lineas de
+    # comando de asociacion de archivos y por el instalador.
+    set(APP_NAME "LGA_OpenInNukeX")
+endif()
+set(APP_MENU_NAME "OpenInNukeX")
+
 # Source files
 set(SOURCES
     src/main.cpp
@@ -64,9 +77,39 @@ set(SOURCES
     src/nukescanner.h
     src/qflowlayout.cpp
     src/qflowlayout.h
+    src/lgaregistry.cpp
+    src/lgaregistry.h
+    src/appsettings.cpp
+    src/appsettings.h
+    src/i18n.cpp
+    src/i18n.h
+    src/nukebridge.cpp
+    src/nukebridge.h
+    src/dialogs.cpp
+    src/dialogs.h
+    src/dialogbutton.cpp
+    src/dialogbutton.h
+    src/dialogstyle.h
 )
 
+# El payload del Nuke Bridge: los `.py` que se instalan en `<.nuke>/LGA_OpenInNukeX/`.
+# Viven en la raiz del repo porque son TAMBIEN lo que se publica como plugin de Nuke; el
+# artefacto se los lleva adentro para poder instalarlos en una maquina sin el repo.
+set(BRIDGE_PAYLOAD
+    "${CMAKE_SOURCE_DIR}/../init.py"
+    "${CMAKE_SOURCE_DIR}/../LGA_QtAdapter_OpenInNukeX.py"
+)
+foreach(_bridge_file ${BRIDGE_PAYLOAD})
+    if(NOT EXISTS "${_bridge_file}")
+        message(FATAL_ERROR
+            "Falta un archivo del Nuke Bridge: ${_bridge_file}\n"
+            "Sin el, la app compila pero el boton INSTALL no tiene que instalar.")
+    endif()
+endforeach()
+
 add_executable(LGA_OpenInNukeX ${SOURCES})
+
+set_target_properties(LGA_OpenInNukeX PROPERTIES OUTPUT_NAME "${APP_NAME}")
 
 target_link_libraries(LGA_OpenInNukeX
     Qt6::Core
@@ -86,6 +129,15 @@ if(WIN32)
     target_sources(LGA_OpenInNukeX PRIVATE LGA_OpenInNukeX.rc)
     enable_language(RC)
     target_link_libraries(LGA_OpenInNukeX shell32 dwmapi)
+
+    # El payload del bridge va en `bridge/` al lado del .exe, que es donde lo busca
+    # NukeBridge::payloadDirectory().
+    add_custom_command(TARGET LGA_OpenInNukeX POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_FILE_DIR:LGA_OpenInNukeX>/bridge"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${BRIDGE_PAYLOAD} "$<TARGET_FILE_DIR:LGA_OpenInNukeX>/bridge"
+        COMMENT "Copiando el payload del Nuke Bridge junto al ejecutable")
 endif()
 
 # ── macOS ─────────────────────────────────────────────────────────────────────
@@ -93,10 +145,15 @@ if(APPLE)
     set_target_properties(LGA_OpenInNukeX PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/cmake/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME "LGA_OpenInNukeX"
+        # CFBundleName va SIN el prefijo `LGA`: es la barra de menu, donde con la app abierta
+        # el prefijo no aporta y ocupa. El nombre de ARCHIVO del bundle si lo lleva, porque
+        # es lo unico que agrupa las apps LGA en Finder y en el Dock.
+        MACOSX_BUNDLE_BUNDLE_NAME "${APP_MENU_NAME}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_IDENTIFIER "com.lga.openinnukex"
+        # GOTCHA: la propiedad se llama MACOSX_BUNDLE_GUI_IDENTIFIER, no ..._IDENTIFIER.
+        # Con el nombre equivocado CMake no se queja y la sustitucion del plist queda vacia.
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.lga.openinnukex"
         MACOSX_BUNDLE_ICON_FILE "LGA_OpenInNukeX"
     )
 
@@ -112,6 +169,16 @@ if(APPLE)
     target_sources(LGA_OpenInNukeX PRIVATE "${QSS_FILE}")
     set_source_files_properties("${QSS_FILE}" PROPERTIES
         MACOSX_PACKAGE_LOCATION "Resources"
+    )
+
+    # Payload del Nuke Bridge en Contents/Resources/bridge, que es donde lo busca
+    # NukeBridge::payloadDirectory().
+    target_sources(LGA_OpenInNukeX PRIVATE ${BRIDGE_PAYLOAD})
+    set_source_files_properties(${BRIDGE_PAYLOAD} PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/bridge"
+        # Sin esto CMake intenta COMPILAR los .py: los agrega a la lista de fuentes del
+        # target y clang los rechaza por extension desconocida.
+        HEADER_FILE_ONLY TRUE
     )
 endif()
 
