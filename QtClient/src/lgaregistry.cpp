@@ -87,6 +87,96 @@ QString resolveInstallPath()
     return QDir::toNativeSeparators(exeDir);
 }
 
+/**
+ * Nombre de la carpeta que CONTIENE la app: la que tiene al `.app` en macOS, la del `.exe` en
+ * Windows. Solo esa, no las de mas arriba.
+ */
+QString containerFolderName()
+{
+    const QString installPath = QDir::fromNativeSeparators(resolveInstallPath());
+#ifdef Q_OS_MACOS
+    // `resolveInstallPath()` devuelve el `.app`; la carpeta que lo contiene es su padre.
+    if (installPath.endsWith(QLatin1String(".app"))) {
+        return QFileInfo(installPath).absoluteDir().dirName();
+    }
+#endif
+    // En Windows `installPath` YA es la carpeta del `.exe`.
+    return QDir(installPath).dirName();
+}
+
+/** Si `appPath` cuelga de `rootDir`. Vacio o no contenido => false. */
+bool pathIsInside(const QString& appPath, const char* rootDirLiteral)
+{
+    const QString rootDir = QDir::cleanPath(QDir::fromNativeSeparators(QLatin1String(rootDirLiteral)));
+    if (rootDir.isEmpty()) {
+        return false;
+    }
+#ifdef Q_OS_WIN
+    // En Windows la misma ruta puede llegar con distinta capitalizacion (`C:` vs `c:`).
+    const Qt::CaseSensitivity cs = Qt::CaseInsensitive;
+#else
+    const Qt::CaseSensitivity cs = Qt::CaseSensitive;
+#endif
+    // Se compara por COMPONENTE de ruta: un `startsWith` a secas haria que `/x/build2` cuente
+    // como si estuviera adentro de `/x/build`.
+    return appPath.startsWith(rootDir + QLatin1Char('/'), cs);
+}
+
+/**
+ * Si este binario esta corriendo desde una salida de DESARROLLO y no desde una instalacion.
+ *
+ * Es el unico caso que NO se registra. Todo lo demas si: `/Applications`, `Program Files`, una
+ * carpeta cualquiera del usuario. La regla es una lista NEGRA, y no una lista blanca de
+ * ubicaciones validas, porque la app se puede instalar en cualquier lado y una lista blanca
+ * dejaria sin registrar instalaciones legitimas.
+ *
+ * Que problema resuelve: el registro se escribia en CADA arranque, asi que el ultimo binario
+ * abierto ganaba. En desarrollo ese es siempre el del build, y el card de LGA Updates de
+ * PipeSync terminaba mostrando la ruta del arbol de compilacion en vez de la instalada.
+ *
+ * Hay DOS chequeos, y se complementan:
+ *
+ * 1. **El nombre de la carpeta que contiene la app** — `build`, `build-release`, `deploy`, ...
+ *    Se mira SOLO esa carpeta y no la ruta entera: `D:\Builds\Apps\X.exe` es una instalacion
+ *    legitima y se registra, porque la carpeta de la app es `Apps`. Mirar la ruta completa
+ *    volteria esa instalacion en silencio, que es este mismo bug al reves.
+ *    Ventaja: NO depende de que nadie cablee nada, asi que sigue valiendo en una app que se
+ *    olvido del punto 2.
+ *
+ * 2. **Las rutas reales del proyecto**, que inyecta CMake:
+ *      - `LGA_BUILD_TREE_DIR` (`CMAKE_BINARY_DIR`) — el arbol de build, se llame como se llame.
+ *      - `LGA_SOURCE_TREE_DIR` (`CMAKE_SOURCE_DIR`) — cubre `deploy/` y cualquier otro staging
+ *        dentro del repo, que son hermanos del build y no hijos.
+ *    Ventaja: agarra lo que el nombre no ve, como un arbol de build llamado `out/`.
+ */
+bool runsFromDevTree()
+{
+    const QString folder = containerFolderName();
+    // `contains` y no `startsWith`: asi entra `build-release` y cualquier variante. La contra es
+    // que una instalacion en una carpeta llamada `Builds` tampoco registra; se acepta porque el
+    // nombre de la carpeta que contiene a la app rara vez es eso en una instalacion de verdad.
+    if (folder.contains(QLatin1String("build"), Qt::CaseInsensitive)
+        || folder.contains(QLatin1String("deploy"), Qt::CaseInsensitive)) {
+        return true;
+    }
+
+#if defined(LGA_BUILD_TREE_DIR) || defined(LGA_SOURCE_TREE_DIR)
+    const QString appPath =
+        QDir::cleanPath(QDir::fromNativeSeparators(QCoreApplication::applicationFilePath()));
+#ifdef LGA_BUILD_TREE_DIR
+    if (pathIsInside(appPath, LGA_BUILD_TREE_DIR)) {
+        return true;
+    }
+#endif
+#ifdef LGA_SOURCE_TREE_DIR
+    if (pathIsInside(appPath, LGA_SOURCE_TREE_DIR)) {
+        return true;
+    }
+#endif
+#endif
+    return false;
+}
+
 } // namespace
 
 namespace LgaRegistry {
@@ -109,6 +199,16 @@ bool registerThisApp(const QString& appName, const QString& version)
 {
     const QString dirPath = directory();
     if (dirPath.isEmpty() || appName.trimmed().isEmpty()) {
+        return false;
+    }
+
+    // El arbol de desarrollo no se registra: pisaria a la copia instalada, que es la que le
+    // sirve a las otras apps. Va al log —y no en silencio— porque si no la proxima vez que el
+    // registro no tenga lo que se espera hay que salir a buscar a ciegas por que.
+    if (runsFromDevTree()) {
+        Logger::logInfo(QString("LgaRegistry: %1 corre desde el arbol de desarrollo (%2), no se "
+                                "registra para no pisar la copia instalada")
+                            .arg(appName, QDir::toNativeSeparators(resolveInstallPath())));
         return false;
     }
 

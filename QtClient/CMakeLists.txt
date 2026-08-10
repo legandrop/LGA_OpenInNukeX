@@ -119,6 +119,15 @@ target_link_libraries(LGA_OpenInNukeX
 
 target_compile_definitions(LGA_OpenInNukeX PRIVATE
     OPENINNUKEX_VERSION="${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+    # Arboles de DESARROLLO de este proyecto (build y repo). Los usa LgaRegistry para NO
+    # registrarse cuando el binario corre desde ahi: si no, el build pisa en el registro
+    # compartido a la copia instalada, que es la que le sirve a las otras apps LGA. El repo entra
+    # ademas del build porque el `deploy/` es hermano del build y no hijo. Son la segunda red:
+    # LgaRegistry ya descarta por el NOMBRE de la carpeta contenedora (`build`, `deploy`), y
+    # estas rutas agarran lo que el nombre no ve (un `out/`, por ejemplo). Salen de CMake, asi
+    # que valen igual en Windows y macOS.
+    LGA_BUILD_TREE_DIR="${CMAKE_BINARY_DIR}"
+    LGA_SOURCE_TREE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 # ── Windows ──────────────────────────────────────────────────────────────────

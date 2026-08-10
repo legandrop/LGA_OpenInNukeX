@@ -33,6 +33,12 @@
  * - **La app se auto-registra al arrancar**, en vez de que lo escriba el instalador. Funciona
  *   igual en las dos plataformas, sobrevive a que el usuario mueva la app de lugar, y no depende
  *   de que el instalador se haya corrido (en macOS directamente no hay instalador).
+ * - **Menos una salida de desarrollo.** Como se escribe en cada arranque, el ultimo binario
+ *   abierto gana, y en desarrollo ese es siempre el del arbol de compilacion: el card de LGA
+ *   Updates de PipeSync terminaba mostrando esa ruta en vez de la instalada. Es lo UNICO que no
+ *   registra, y se reconoce de dos formas: por el NOMBRE de la carpeta que contiene la app
+ *   (`build`, `deploy`, ... — solo esa carpeta, no la ruta entera) y por las rutas reales del
+ *   proyecto que inyecta CMake (`LGA_BUILD_TREE_DIR`, `LGA_SOURCE_TREE_DIR`).
  * - **Escritura atomica** (archivo temporal + rename): dos apps LGA pueden arrancar a la vez, y
  *   un lector no puede encontrarse un JSON a medio escribir.
  * - **Fallar no molesta al usuario.** Si el registro no se puede escribir, la app sigue andando:
@@ -45,7 +51,17 @@ QString directory();
 
 /**
  * Registra esta app: nombre visible, version e `installPath` (deducido del ejecutable que
- * corre). Se llama una vez al arrancar. Devuelve false si no se pudo escribir.
+ * corre). Se llama una vez al arrancar.
+ *
+ * NO se registra si el binario corre desde una salida de desarrollo: carpeta contenedora
+ * llamada `build`/`deploy`, o adentro del arbol de build o del repo. Cualquier otra ubicacion
+ * si: `/Applications`, `Program Files`, o donde el usuario la haya puesto. Es una lista negra a
+ * proposito — una lista blanca de ubicaciones "validas" dejaria sin registrar instalaciones
+ * legitimas.
+ *
+ * Devuelve false si no se pudo escribir Y TAMBIEN si se saltea por correr desde el arbol de
+ * desarrollo; en los dos casos queda la razon en el log. Ningun llamador deberia tratar el
+ * false como error.
  */
 bool registerThisApp(const QString& appName, const QString& version);
 
