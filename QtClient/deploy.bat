@@ -15,20 +15,26 @@ REM    no tenia que instalar. El chequeo del final ahora corta si falta.
 
 REM Parseo real y no un solo `if` sobre %~1: antes cualquier opcion desconocida —o un
 REM --no-run en segunda posicion— se ignoraba en silencio.
+REM
+REM Los shift van SIEMPRE con /1. Sin el, `shift` desplaza tambien %0, asi que despues de
+REM consumir la primera opcion `%~dp0` deja de ser la carpeta del script y pasa a ser la del
+REM que llamo. Con eso QTCLIENT_DIR apuntaba al repo de release y el deploy moria diciendo
+REM que faltaba resources\SetUserFTA.exe, teniendolo al lado. Como instalador.bat siempre
+REM pasa --no-run, el deploy de Windows estaba roto en todos los casos.
 set "NO_RUN=false"
 set "PARALLEL_ARGS="
 
 :parse_args
 if "%~1"=="" goto args_done
-if /I "%~1"=="--no-run" ( set "NO_RUN=true" & shift & goto parse_args )
+if /I "%~1"=="--no-run" ( set "NO_RUN=true" & shift /1 & goto parse_args )
 if /I "%~1"=="--parallel" (
     if "%~2"=="" (
         echo ERROR: --parallel requiere una cantidad de nucleos.
         exit /b 1
     )
     set "PARALLEL_ARGS=--parallel %~2"
-    shift
-    shift
+    shift /1
+    shift /1
     goto parse_args
 )
 echo ERROR: Opcion desconocida: %~1

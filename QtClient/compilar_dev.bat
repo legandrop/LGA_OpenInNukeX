@@ -13,22 +13,26 @@ set "WAIT_FOR_APP=false"
 set "SIM_SLOW=false"
 set "PARALLEL_CORES=%NUMBER_OF_PROCESSORS%"
 
+REM Los shift van SIEMPRE con /1. Sin el, `shift` desplaza tambien %0, y `%~dp0` —que se usa
+REM mas abajo para resolver QTCLIENT_DIR— deja de ser la carpeta del script para pasar a ser
+REM la del que llamo. Aca entra siempre con --release como minimo, asi que sin /1 la ruta
+REM salia mal en todas las corridas.
 :parse_args
 if "%~1"=="" goto main
-if /I "%~1"=="--force-clean" ( set "FORCE_CLEAN=true" & shift & goto parse_args )
-if /I "%~1"=="--no-deploy" ( set "NO_DEPLOY=true" & shift & goto parse_args )
-if /I "%~1"=="--no-run" ( set "NO_RUN=true" & shift & goto parse_args )
-if /I "%~1"=="--release" ( set "BUILD_TYPE=Release" & set "BUILD_SUBDIR=build-release" & shift & goto parse_args )
-if /I "%~1"=="--wait" ( set "WAIT_FOR_APP=true" & shift & goto parse_args )
-if /I "%~1"=="--sim-slow" ( set "SIM_SLOW=true" & shift & goto parse_args )
+if /I "%~1"=="--force-clean" ( set "FORCE_CLEAN=true" & shift /1 & goto parse_args )
+if /I "%~1"=="--no-deploy" ( set "NO_DEPLOY=true" & shift /1 & goto parse_args )
+if /I "%~1"=="--no-run" ( set "NO_RUN=true" & shift /1 & goto parse_args )
+if /I "%~1"=="--release" ( set "BUILD_TYPE=Release" & set "BUILD_SUBDIR=build-release" & shift /1 & goto parse_args )
+if /I "%~1"=="--wait" ( set "WAIT_FOR_APP=true" & shift /1 & goto parse_args )
+if /I "%~1"=="--sim-slow" ( set "SIM_SLOW=true" & shift /1 & goto parse_args )
 if /I "%~1"=="--parallel" (
     if "%~2"=="" (
         echo ERROR: --parallel requiere una cantidad de nucleos.
         exit /b 1
     )
     set "PARALLEL_CORES=%~2"
-    shift
-    shift
+    shift /1
+    shift /1
     goto parse_args
 )
 if /I "%~1"=="--help" goto show_help
