@@ -16,7 +16,8 @@ set -euo pipefail
 #     installer_mac.sh         entry point que invoca PipeSync (del repo de release)
 #     i_mac_plugin_engine.sh   el motor comun al que forwardea
 #     LGA OpenInNukeX.app      la aplicacion
-#     install.pdf              el instructivo
+#     install_es.pdf           el instructivo en castellano
+#     install_en.pdf           el instructivo en ingles
 #
 # Y por eso el NOMBRE del archivo es `LGA_OpenInNukeX_v<version>_mac.zip` y no
 # `..._Mac_v<version>.zip` como dice la convencion generica: es el patron que el catalogo de
@@ -227,10 +228,17 @@ if [ "$CREATE_ZIP" = "true" ]; then
     cp "$ENGINE_SRC" "$STAGE/i_mac_plugin_engine.sh"
     chmod +x "$STAGE/installer_mac.sh" "$STAGE/i_mac_plugin_engine.sh"
 
-    # El instructivo va adentro del zip, igual que en el de Windows.
-    if [ -f "$REPO_ROOT/install.pdf" ]; then
-        cp "$REPO_ROOT/install.pdf" "$STAGE/install.pdf"
-    fi
+    # Los instructivos van adentro del zip, igual que en el de Windows. Se cortan si
+    # faltan: con un `if -f` silencioso el zip salia sin hoja de instalacion y nadie
+    # se enteraba hasta abrirlo.
+    for lang in es en; do
+        if [ ! -f "$REPO_ROOT/install_${lang}.pdf" ]; then
+            echo "ERROR: falta $REPO_ROOT/install_${lang}.pdf"
+            echo "       Se genera con: node ../LGA_Release/Installers/docs/build_install_pdfs.mjs --install"
+            exit 1
+        fi
+        cp "$REPO_ROOT/install_${lang}.pdf" "$STAGE/install_${lang}.pdf"
+    done
 
     ditto "deploy/${APP_NAME}.app" "$STAGE/${APP_NAME}.app"
 
