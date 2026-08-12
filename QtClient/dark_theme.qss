@@ -360,8 +360,8 @@ QLabel#bridgeChip {
 }
 
 QLabel#bridgeChip[state="on"] {
-    background-color: #1c2f16;
-    color: #4FBE29;
+    background-color: #253320;
+    color: #7CB868; 
 }
 
 QLabel#bridgeChip[state="stale"] {

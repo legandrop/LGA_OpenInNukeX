@@ -38,8 +38,8 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 
 ## Instalación
 
-- Para instalar el componente de Nuke, ejecutar `installer_nuke_win.bat` en
-  Windows o `installer_nuke_mac.sh` en macOS. El instalador valida el payload,
+- Para instalar el componente de Nuke, ejecutar `installer_win.bat` en
+  Windows o `bash installer_mac.sh` en macOS. El instalador valida el payload,
   respalda una instalación anterior y configura el `init.py` global sin
   duplicar el plugin path.
 - Como alternativa manual, copiar la carpeta **LGA_OpenInNukeX** a **%USERPROFILE%/.nuke** en Windows o a **~/.nuke** en macOS.<br> Debería quedar así:

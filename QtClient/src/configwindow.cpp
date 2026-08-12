@@ -452,23 +452,17 @@ void ConfigWindow::setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout)
     bridgeLayout->setContentsMargins(20, 10, 20, 10);
     bridgeLayout->setSpacing(10);
 
-    // Título + chip de estado.
-    QHBoxLayout *bridgeHeader = new QHBoxLayout();
-    bridgeHeader->setContentsMargins(0, 0, 0, 0);
-    bridgeHeader->setSpacing(10);
-
     QLabel *bridgeTitle = new QLabel("Nuke Bridge", bridgeGroup);
     bridgeTitle->setObjectName("sectionTitle");
-    bridgeHeader->addWidget(bridgeTitle);
-    bridgeHeader->addStretch();
+    bridgeLayout->addWidget(bridgeTitle);
+    bridgeLayout->addSpacing(4);
 
+    // El chip de estado NO va acá arriba junto al título: se crea ahora porque
+    // `refreshBridgeStatus()` lo necesita existiendo, pero se ubica más abajo, en la fila del
+    // toggle de instalación manual. Ver el comentario de esa fila.
     bridgeChipLabel = new QLabel(TR(ChipNotInstalled), bridgeGroup);
     bridgeChipLabel->setObjectName("bridgeChip");
     bridgeChipLabel->setProperty("state", "off");
-    bridgeHeader->addWidget(bridgeChipLabel);
-
-    bridgeLayout->addLayout(bridgeHeader);
-    bridgeLayout->addSpacing(4);
 
     bridgeDescLabel = new QLabel(TR(DescNukeBridge), bridgeGroup);
     bridgeDescLabel->setObjectName("sectionDescription");
@@ -513,10 +507,17 @@ void ConfigWindow::setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout)
     manualToggleButton->setFixedHeight(32);
     manualToggleButton->setCursor(Qt::PointingHandCursor);
 
+    // El chip de estado comparte esta fila, pegado al borde derecho. Arriba, junto al título,
+    // quedaba lejos del control que lo cambia: el botón de instalar está a media caja de
+    // distancia, y el usuario lo apretaba sin ver que el chip se actualizaba. Acá queda
+    // inmediatamente debajo de ese botón y en el mismo renglón que la salida manual, que es la
+    // otra forma de cambiar lo que el chip informa.
     QHBoxLayout *manualToggleLayout = new QHBoxLayout();
     manualToggleLayout->setContentsMargins(0, 0, 0, 0);
+    manualToggleLayout->setSpacing(10);
     manualToggleLayout->addWidget(manualToggleButton);
     manualToggleLayout->addStretch(1);
+    manualToggleLayout->addWidget(bridgeChipLabel, 0, Qt::AlignVCenter);
     bridgeLayout->addLayout(manualToggleLayout);
 
     // ── panel manual, colapsado por defecto ──────────────────────────────────
