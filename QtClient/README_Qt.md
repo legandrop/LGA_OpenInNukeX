@@ -90,16 +90,20 @@ empaqueta accidentalmente un ejecutable Release anterior.
 
 ### macOS
 
-Requiere Qt 6.5.3 (x86_64). En Apple Silicon se ejecuta via Rosetta (los scripts lo manejan automáticamente).
+Requiere Qt 6.5.3, que se instala universal (x86_64 + arm64). El bundle se compila
+universal y en Apple Silicon se ejecuta **nativo arm64**. `compilar_dev.sh --rosetta`
+fuerza el lanzamiento traducido, util solo para reproducir un bug de la rebanada Intel.
 
 ```bash
 ./limpiar.sh        # Limpia build/
 ./compilar_dev.sh   # Debug rápido, copia plugins Qt mínimos, lanza la app
-./compilar.sh       # Debug con macdeployqt completo
+./compilar.sh       # Release, en el arbol build-release/ (forwardea a compilar_dev.sh --release)
 ./deploy.sh         # Release, genera .app distribuible
 ```
 
-Los scripts crean un AGL.framework dummy (necesario para linkar Qt 6.x en macOS 12+ donde AGL fue removido).
+En macOS 12+ AGL ya no existe, y Qt lo arrastra igual a traves de `WrapOpenGL::WrapOpenGL`.
+No se crea ningun framework dummy: `CMakeLists.txt` lo neutraliza antes de `find_package` y
+despues lo purga del target.
 
 ## Asociación de Archivos
 
@@ -135,7 +139,7 @@ Los logs se borran al iniciar la app.
 
 | | Windows | macOS |
 |---|---|---|
-| Qt | 6.5.3 + MinGW 13.1 | 6.5.3 (x86_64) |
+| Qt | 6.5.3 + MinGW 13.1 | 6.5.3 (universal x86_64 + arm64) |
 | CMake | 3.16+ | 3.16+ |
 | OS | Windows 10/11 | macOS 12+ |
 | Extras | Ninja, LLVM/lld, Inno Setup (opcional) | Homebrew duti (opcional) |
@@ -148,5 +152,5 @@ Los logs se borran al iniciar la app.
 | `src/nukeopener.h/cpp` | `sendToNuke()`, `onConnected()`, `onResponseReceived()`, `openNukeWithFile()`, `onSocketTimeout()`, `showAutoCloseMessage()` |
 | `src/configwindow.h/cpp` | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()`, `browseNukePath()`, `resolveNukeBinaryFromBundle()`, `getAppBundlePath()`, `loadStyleSheet()` |
 | `src/nukescanner.h/cpp` | `getCommonNukePaths()`, `scanDirectory()`, `isValidNukeExecutable()`, `isValidNukeAppBundle()`, `parseNukeExecutable()` |
-| `CMakeLists.txt` | Targets Win/Mac, `MACOSX_BUNDLE`, deployment target 12.0, Info.plist, icns, AGL dummy |
+| `CMakeLists.txt` | Targets Win/Mac, `MACOSX_BUNDLE`, deployment target 12.0, Info.plist, icns, purga de AGL, build universal |
 | `cmake/Info.plist.in` | `CFBundleDocumentTypes` (.nk), `UTExportedTypeDeclarations` (com.foundry.nuke.script), bundle ID |

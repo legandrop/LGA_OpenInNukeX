@@ -4,7 +4,7 @@
 set -uo pipefail
 
 show_help() {
-    echo "Uso: $0 [--release] [--force-clean] [--parallel N] [--no-deploy] [--no-run] [--wait] [--sim-slow] [--no-rosetta]"
+    echo "Uso: $0 [--release] [--force-clean] [--parallel N] [--no-deploy] [--no-run] [--wait] [--sim-slow] [--rosetta]"
     echo ""
     echo "Opciones:"
     echo "  --release        Compilar en Release, en el arbol build-release/ (lo usa deploy.sh)."
@@ -17,10 +17,10 @@ show_help() {
     echo "  --wait           Dejar la app en foreground: la terminal queda retenida hasta"
     echo "                   cerrarla y se ven su stdout/stderr y su exit code."
     echo "                   Por defecto la app se lanza en background y el script termina."
-    echo "  --no-rosetta     Correr nativo arm64 en vez de bajo Rosetta (default en Apple"
-    echo "                   Silicon por un workaround historico de Qt 6.5.3). Es lo que hay"
-    echo "                   que usar para medir performance: bajo Rosetta se mide una"
-    echo "                   maquina que no existe."
+    echo "  --rosetta        Forzar el lanzamiento TRADUCIDO (x86_64 bajo Rosetta). Por defecto"
+    echo "                   la app corre NATIVA arm64, que es la rebanada que usan los"
+    echo "                   usuarios. Solo para reproducir un bug especifico de la rebanada"
+    echo "                   Intel; Apple esta retirando Rosetta."
     echo "  --sim-slow       Lanzar la app SIMULANDO UNA MAQUINA LENTA: QoS background (en Apple"
     echo "                   Silicon la restringe a los E-cores) + I/O de disco throttled. Los"
     echo "                   procesos hijos heredan la politica. Sirve para reproducir en una"
@@ -44,9 +44,9 @@ NO_RUN=false
 WAIT_FOR_APP=false
 # Ver la seccion "Simular una maquina lenta" de las reglas y docs/Doc_SimSlow.md del template.
 SIM_SLOW=false
-# En ARM64 la app se lanza bajo Rosetta por un workaround historico de Qt 6.5.3. Con esto se
-# corre nativo, que es lo que hay que usar para medir performance de verdad.
-NO_ROSETTA=false
+# En Apple Silicon la app corre NATIVA arm64. Con esto se fuerza el lanzamiento traducido,
+# solo util para reproducir un bug especifico de la rebanada Intel.
+USE_ROSETTA=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -64,7 +64,13 @@ while [[ $# -gt 0 ]]; do
         --no-run) NO_RUN=true; shift ;;
         --wait) WAIT_FOR_APP=true; shift ;;
         --sim-slow) SIM_SLOW=true; shift ;;
-        --no-rosetta) NO_ROSETTA=true; shift ;;
+        --rosetta) USE_ROSETTA=true; shift ;;
+        # Aceptado y sin efecto: era el flag para pedir lo que ahora es el default. Se deja
+        # reconocido para que un comando viejo no muera con "Opcion desconocida", pero avisa:
+        # tragarselo en silencio hace que alguien lo siga escribiendo creyendo que hace algo.
+        --no-rosetta)
+            echo "AVISO: --no-rosetta quedo obsoleto; correr nativo arm64 ya es el default."
+            shift ;;
         --help) show_help; exit 0 ;;
         *) echo "Opcion desconocida: $1"; show_help; exit 1 ;;
     esac
@@ -205,15 +211,22 @@ echo "🚀 Ejecutando ${APP_NAME}..."
 # en vez de pisarse: cada uno envuelve al anterior.
 LAUNCH_CMD=("$APP_BIN")
 
-# Rosetta workaround historico para Qt 6.5.3 en ARM64. Se lanza TRADUCIDO por defecto, y eso
-# tiene dos consecuencias que conviene tener presentes:
+# La app corre NATIVA arm64. Antes se lanzaba traducida SIEMPRE, arrastrando un workaround de
+# Qt 6.5.3 que ya no hace falta: los frameworks de Qt instalados son universales y la rebanada
+# arm64 arranca sin problema (verificado). Ese default tenia tres costos:
 #   - la rebanada arm64 —la que corre la mayoria de los usuarios y la que se publica— no se
-#     ejecuta nunca en desarrollo;
-#   - `--sim-slow` termina midiendo Rosetta sobre E-cores, o sea una maquina que no existe.
-# Con `--no-rosetta` se corre nativo, que es lo que hay que usar para medir performance.
-if [ "$(uname -m)" = "arm64" ] && [ "$NO_ROSETTA" = "false" ]; then
-    LAUNCH_CMD=(arch -x86_64 "${LAUNCH_CMD[@]}")
-    echo "   (bajo Rosetta; usa --no-rosetta para correr nativo arm64)"
+#     ejecutaba NUNCA en desarrollo, asi que un bug propio de ella no aparecia hasta produccion;
+#   - `--sim-slow` terminaba midiendo Rosetta sobre E-cores, o sea una maquina que no existe;
+#   - Apple esta retirando Rosetta, asi que el camino por defecto era el que tiene fecha de
+#     vencimiento.
+# Con `--rosetta` se puede forzar el traducido para reproducir un bug de la rebanada Intel.
+if [ "$(uname -m)" = "arm64" ]; then
+    if [ "$USE_ROSETTA" = "true" ]; then
+        LAUNCH_CMD=(arch -x86_64 "${LAUNCH_CMD[@]}")
+        echo "   (forzado bajo Rosetta por --rosetta)"
+    else
+        LAUNCH_CMD=(arch -arm64 "${LAUNCH_CMD[@]}")
+    fi
 fi
 
 # --sim-slow: `taskpolicy -c background` clampea el QoS (en Apple Silicon deja al proceso
