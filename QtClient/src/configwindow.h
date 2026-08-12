@@ -36,6 +36,8 @@ protected:
     void showEvent(QShowEvent *event) override;
     /// Distingue el resize del USUARIO del que hace la app: ver `userResizedHeight`.
     void resizeEvent(QResizeEvent *event) override;
+    /// Idem para el movimiento: ver `userMovedWindow`.
+    void moveEvent(QMoveEvent *event) override;
 
 private slots:
     void browseNukePath();
@@ -76,6 +78,9 @@ private:
     /// propio de la app. Todo cambio de geometria pasa por aca: ver `programmaticResize` para
     /// por que no alcanza con envolver el `resize()`.
     void applyWindowHeight(int maxHeight, int targetHeight);
+    /// Centra la ventana en la pantalla actual. No hace nada si el usuario ya la movio o
+    /// redimensiono a mano: desde ese momento la posicion es suya.
+    void centerOnScreen();
 
     // Idioma
     void setLanguage(I18n::Lang lang);
@@ -165,6 +170,12 @@ private:
     /// que el flag esta prendido, y sin esto cualquiera de ellos se registraba como un gesto
     /// del usuario.
     int lastAppliedHeight;
+    /// True apenas el usuario arrastra la ventana. Desde ahi la app deja de re-centrarla: la
+    /// posicion pasa a ser suya, igual que el alto con `userResizedHeight`.
+    bool userMovedWindow;
+    /// Marca los `move()` que hace la propia app, para que `moveEvent()` no los confunda con
+    /// un arrastre del usuario.
+    bool programmaticMove;
 };
 
 #endif // CONFIGWINDOW_H

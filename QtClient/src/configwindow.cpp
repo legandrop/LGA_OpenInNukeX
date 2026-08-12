@@ -16,6 +16,7 @@
 #include <QSizePolicy>
 #include <QShowEvent>
 #include <QResizeEvent>
+#include <QMoveEvent>
 #include <QGridLayout>
 #include <QScrollBar>
 #include "appsettings.h"
@@ -38,6 +39,15 @@ constexpr int kWindowWidth = 800;
 
 /// Alto mínimo de la ventana.
 constexpr int kMinWindowHeight = 400;
+
+// ============================================================================
+// 🔲🔲🔲  SEPARACION ENTRE CARDS — CENTRALIZADA ACA  🔲🔲🔲
+// ----------------------------------------------------------------------------
+// Espacio vertical, en píxeles, entre los tres bloques de la ventana (File
+// Association, Preferred Nuke Version, Nuke Bridge). Cambiar este valor los
+// separa o los junta a TODOS de una.
+// ============================================================================
+constexpr int kCardSpacing = 12;
 
 /// La ventana nunca ocupa más que esta fracción del alto USABLE de la pantalla (o sea ya
 /// descontados la barra de menú y el Dock). Con el panel manual desplegado el contenido pide
@@ -109,6 +119,8 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     , userResizedHeight(false)
     , programmaticResize(false)
     , lastAppliedHeight(0)
+    , userMovedWindow(false)
+    , programmaticMove(false)
 {
     Logger::logInfo("=== CONSTRUCTOR ConfigWindow INICIADO ===");
     
@@ -165,6 +177,11 @@ void ConfigWindow::showEvent(QShowEvent *event)
 #ifdef Q_OS_WIN
     applyDarkTitleBar(this);
 #endif
+
+    // Centrado también acá, y no solo desde `applyWindowHeight()`: el del constructor corre
+    // con la ventana todavía sin marco, así que no puede descontar la barra de título. Este es
+    // el primero que la ve, y es el que decide dónde APARECE.
+    centerOnScreen();
 }
 
 void ConfigWindow::resizeEvent(QResizeEvent *event)
@@ -191,6 +208,49 @@ void ConfigWindow::resizeEvent(QResizeEvent *event)
         Logger::logInfo("El usuario redimensionó la ventana: la app deja de imponer el alto");
     }
     userResizedHeight = true;
+}
+
+void ConfigWindow::moveEvent(QMoveEvent *event)
+{
+    QWidget::moveEvent(event);
+
+    if (programmaticMove || !isVisible()) {
+        return;
+    }
+    if (!userMovedWindow) {
+        Logger::logInfo("El usuario movió la ventana: la app deja de re-centrarla");
+    }
+    userMovedWindow = true;
+}
+
+void ConfigWindow::centerOnScreen()
+{
+    // Una vez que el usuario la movió o la redimensionó, la geometría es suya: re-centrarla
+    // seria arrancarle la ventana de donde la dejó.
+    if (userMovedWindow || userResizedHeight) {
+        return;
+    }
+
+    QScreen *screen = this->screen();
+    if (!screen) {
+        return;
+    }
+
+    // Se centra el FRAME y no el cliente: `frameGeometry()` incluye la barra de título, y
+    // centrar el cliente deja la ventana un poco baja, que es justo el síntoma que esto viene
+    // a corregir. El alto del marco solo se conoce una vez que la ventana existe, así que si
+    // todavía no hay marco se usa el alto del cliente y se recentra en la próxima pasada.
+    const QRect available = screen->availableGeometry();
+    const QRect frame = frameGeometry();
+    const int frameHeight = frame.height() > 0 ? frame.height() : height();
+    const int titleBar = qMax(0, frameHeight - height());
+
+    const int x = available.x() + (available.width() - width()) / 2;
+    const int y = available.y() + (available.height() - frameHeight) / 2 + titleBar;
+
+    programmaticMove = true;
+    move(x, y);
+    programmaticMove = false;
 }
 
 void ConfigWindow::setupUI()
@@ -231,10 +291,8 @@ void ConfigWindow::setupUI()
     // Layout para el contenido
     QVBoxLayout *centralLayout = new QVBoxLayout(contentWidget);
     centralLayout->setContentsMargins(20, 20, 20, 20);
-    // 15 y no 24: es la separación entre bloques que ya usan el resto de las apps LGA
-    // (settingstab de PipeSync/FMS3). Con 24 los tres bloques se leían como tres pantallas
-    // distintas en vez de como una sola lista de opciones.
-    centralLayout->setSpacing(15);
+    // Ver `kCardSpacing` al tope del archivo: es la perilla para separarlos o juntarlos.
+    centralLayout->setSpacing(kCardSpacing);
     
     // Agregar el widget de contenido al layout horizontal centrado
     horizontalCenterLayout->addStretch();
@@ -1600,6 +1658,13 @@ void ConfigWindow::applyWindowHeight(int maxHeight, int targetHeight)
     }
     lastAppliedHeight = height();
     programmaticResize = false;
+
+    // Cada vez que la app cambia el alto vuelve a centrar: si no, la ventana crece hacia ABAJO
+    // desde donde estaba y termina descentrada. El escaneo de versiones y el panel manual
+    // cambian el alto después de abrir, así que centrar una sola vez al arranque no alcanza.
+    if (targetHeight > 0) {
+        centerOnScreen();
+    }
 }
 
 int ConfigWindow::preferredWindowHeight() const
