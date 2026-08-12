@@ -20,13 +20,18 @@
 #include <QGridLayout>
 #include <QScrollBar>
 #include <QRegularExpression>
+#include <QPointer>
 #include <tuple>
 #include "appsettings.h"
 #include "dialogs.h"
 #include "dialogstyle.h"
+#include "lgaregistry.h"
 #include "logger.h"
 #include "nukebridge.h"
 #include "qflowlayout.h"
+#ifdef Q_OS_MACOS
+#include "macintegration.h"
+#endif
 
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
@@ -56,6 +61,13 @@ constexpr int kCardSpacing = 12;
 /// más de lo que entra en un portátil, y una ventana pegada a los dos bordes se lee como si
 /// estuviera rota; el resto lo resuelve el scroll.
 constexpr double kMaxScreenFraction = 0.8;
+
+#ifdef Q_OS_MACOS
+/// Cuanto se espera la respuesta al cartel de permiso de macOS antes de volver a habilitar
+/// APPLY. Generoso a proposito: el cartel lo contesta una persona, y reactivar el boton no
+/// invalida una respuesta que llegue despues.
+constexpr int kAssocWatchdogMs = 90000;
+#endif
 
 #ifdef Q_OS_WIN
 void applyDarkTitleBar(QWidget *window)
@@ -894,9 +906,37 @@ void ConfigWindow::setLanguage(I18n::Lang lang)
     calculateAndResizeWindow();
 }
 
+void ConfigWindow::refreshApplyButtonText()
+{
+    if (!applyButton)
+        return;
+
+    // El boton dice lo que va a HACER. Si esta app ya es la que abre los `.nk`, apretarlo no
+    // asocia nada nuevo: rehace el registro, que es lo que sirve cuando la asociacion quedo
+    // apuntando a una copia vieja o el Finder dejo de reconocerla.
+    //
+    // En Windows no hay equivalente barato de esta consulta —habria que leer el UserChoice del
+    // registro y compararlo contra el ProgID— asi que ahi el boton se queda en APPLY.
+#ifdef Q_OS_MACOS
+    applyButton->setText(MacIntegration::isDefaultNkHandler() ? TR(BtnReapply) : TR(BtnApply));
+#else
+    applyButton->setText(TR(BtnApply));
+#endif
+}
+
+void ConfigWindow::changeEvent(QEvent *event)
+{
+    QWidget::changeEvent(event);
+
+    // Al volver al frente se relee: el usuario pudo haber cambiado la asociacion en Finder, o
+    // haber contestado el cartel del sistema con la ventana atras.
+    if (event->type() == QEvent::ActivationChange && isActiveWindow())
+        refreshApplyButtonText();
+}
+
 void ConfigWindow::retranslateUi()
 {
-    applyButton->setText(TR(BtnApply));
+    refreshApplyButtonText();
     descriptionLabel->setText(TR(DescFileAssociation));
 
     nukeVersionDescLabel->setText(TR(DescNukeVersion));
@@ -1331,7 +1371,7 @@ bool ConfigWindow::setFileAssociation()
 #endif // Q_OS_WIN
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  macOS: file association via Launch Services + duti
+//  macOS: file association via Launch Services
 // ─────────────────────────────────────────────────────────────────────────────
 #ifndef Q_OS_WIN
 
@@ -1364,6 +1404,17 @@ void ConfigWindow::executeMacAssociation()
     QString bundlePath = getAppBundlePath();
     Logger::logInfo(QString("Bundle path: %1").arg(bundlePath));
 
+    // Lo que se asocia al `.nk` es la RUTA de ESTE bundle. Desde el arbol de build eso deja al
+    // Finder apuntando a una carpeta de compilacion que el proximo `limpiar.sh` borra, y el
+    // usuario se queda sin poder abrir un `.nk` con doble click sin entender por que. Antes no
+    // pasaba porque `duti` recibia el bundle ID y resolvia el que estuviera registrado.
+    if (LgaRegistry::runsFromDevTree()) {
+        Logger::logError(QString("Asociacion cancelada: la app corre desde una salida de "
+                                 "desarrollo (%1)").arg(bundlePath));
+        Dialogs::warn(this, TR(TitleWarning), TR(MsgAssocDevTree));
+        return;
+    }
+
     // Step 1: Register the app bundle with Launch Services
     QString lsregister =
         "/System/Library/Frameworks/CoreServices.framework"
@@ -1377,25 +1428,49 @@ void ConfigWindow::executeMacAssociation()
         Logger::logError("lsregister no encontrado");
     }
 
-    // Step 2: Try 'duti' to set LGA_OpenInNukeX as default handler for .nk
-    bool dutiSuccess = false;
-    QProcess dutiCheck;
-    dutiCheck.start("which", {"duti"});
-    dutiCheck.waitForFinished(3000);
+    // Paso 2: quedar como handler por defecto de los `.nk`. Esto lo hacia `duti`, que es un
+    // binario de Homebrew que el usuario tenia que instalarse aparte y que la mayoria no tiene:
+    // sin el, APPLY terminaba siempre en el cartel de "Casi listo" mandando a hacer a mano el
+    // Get Info + Change All. `duti` no hace ninguna magia — por dentro le pide el cambio a Launch
+    // Services, que es lo mismo que ahora se pide desde adentro de la app.
+    //
+    // La llamada es asincrona porque macOS pone SU PROPIO cartel de confirmacion antes de
+    // cambiar una asociacion, y hasta que el usuario no lo contesta no hay resultado. Esa
+    // confirmacion no se puede saltear ni desde la app ni con duti: es el sistema protegiendo
+    // una preferencia del usuario. Lo que si cambia es que ahora es UN cartel del sistema en vez
+    // de cuatro pasos manuales en Finder.
+    //
+    // Mientras el cartel del sistema esta arriba, APPLY queda apagado para no encolar un segundo
+    // pedido. Lo reactiva el callback, y tambien un watchdog: si el usuario deja el cartel sin
+    // contestar, el callback no llega nunca, y sin la segunda red el boton se quedaba muerto
+    // hasta reiniciar la app. El watchdog NO cancela nada — la respuesta tardia sigue valiendo.
+    if (applyButton)
+        applyButton->setEnabled(false);
+    QPointer<ConfigWindow> self(this);
+    QTimer::singleShot(kAssocWatchdogMs, this, [self]() {
+        if (self && self->applyButton)
+            self->applyButton->setEnabled(true);
+    });
 
-    if (dutiCheck.exitCode() == 0) {
-        Logger::logInfo("duti encontrado, configurando handler por defecto...");
-        dutiSuccess = executeCommand("duti", {"-s", "com.lga.openinnukex", ".nk", "all"});
-        Logger::logInfo(QString("duti resultado: %1").arg(dutiSuccess ? "exitoso" : "fallo"));
-    } else {
-        Logger::logInfo("duti no encontrado (brew install duti)");
-    }
-
-    if (dutiSuccess) {
-        Dialogs::info(this, TR(TitleAssocDone), TR(MsgAssocDone));
-    } else {
-        Dialogs::info(this, TR(TitleAssocAlmost), TR(MsgAssocAlmost));
-    }
+    // `self` y no `this`: el callback llega despues de que el usuario conteste el cartel, y para
+    // entonces la ventana pudo haberse cerrado.
+    MacIntegration::setAsDefaultNkHandler([self](bool ok, const QString &error) {
+        if (!self)
+            return;
+        if (self->applyButton)
+            self->applyButton->setEnabled(true);
+        self->refreshApplyButtonText();
+        if (ok) {
+            Logger::logInfo("Handler por defecto de .nk configurado");
+            Dialogs::info(self, TR(TitleAssocDone), TR(MsgAssocDone));
+            return;
+        }
+        // El fallo mas comun no es un bug sino un "No" en el cartel del sistema, asi que el
+        // cartel que queda es el de los pasos manuales y no uno de error.
+        Logger::logError(QString("No se pudo fijar el handler por defecto de .nk: %1")
+                             .arg(error.isEmpty() ? QStringLiteral("sin detalle") : error));
+        Dialogs::info(self, TR(TitleAssocAlmost), TR(MsgAssocAlmost));
+    });
 }
 
 #endif // !Q_OS_WIN

@@ -38,6 +38,9 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
     /// Idem para el movimiento: ver `userMovedWindow`.
     void moveEvent(QMoveEvent *event) override;
+    /// Se usa para releer el estado de la asociacion cuando la ventana vuelve al frente: el
+    /// usuario pudo haberla cambiado en Finder mientras la app estaba atras.
+    void changeEvent(QEvent *event) override;
 
 private slots:
     void browseNukePath();
@@ -67,6 +70,8 @@ private:
     // Scanner de versiones
     void initializeScanner();
     void createVersionButtons(const QList<NukeVersion> &versions);
+    /// Pone APPLY o RE-APPLY segun si esta app YA es la que abre los `.nk`. Ver el cuerpo.
+    void refreshApplyButtonText();
     /// Si la ruta guardada apunta a una version de Nuke que ya no esta instalada, la reemplaza
     /// por la mas nueva de las encontradas por el escaner. Ver el comentario del cuerpo.
     void healStalePath(const QList<NukeVersion> &versions);

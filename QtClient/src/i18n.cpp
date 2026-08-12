@@ -34,6 +34,7 @@ constexpr std::array<Row, static_cast<size_t>(I18n::Str::Count_)> kTable = {{
 
     // ── botones ──────────────────────────────────────────────────────────────
     {"APPLY", "APPLY"},
+    {"RE-APPLY", "RE-APPLY"},
     {"BROWSE", "BROWSE"},
     {"SAVE", "SAVE"},
     {"INSTALL", "INSTALAR"},
@@ -108,15 +109,17 @@ constexpr std::array<Row, static_cast<size_t>(I18n::Str::Count_)> kTable = {{
     {"Double-clicking a .nk file now opens it with OpenInNukeX.",
      "Ahora al hacer doble click en un .nk se abre con OpenInNukeX."},
     {"Almost done", "Casi listo"},
-    {"The app is registered with your system. To finish, right-click any .nk file in Finder, "
-     "choose <b>Get Info</b>, pick OpenInNukeX under <b>Open with</b> and click "
-     "<b>Change All</b>.<br><br>Installing <code>duti</code> "
-     "(<code>brew install duti</code>) automates this step.",
-     "La app quedo registrada en el sistema. Para terminar, boton derecho sobre cualquier .nk "
-     "en Finder, <b>Get Info</b>, elegi OpenInNukeX en <b>Open with</b> y toca "
-     "<b>Change All</b>.<br><br>Instalando <code>duti</code> "
-     "(<code>brew install duti</code>) este paso se automatiza."},
+    {"The app is registered with your system, but macOS did not hand it the .nk files. To "
+     "finish, right-click any .nk file in Finder, choose <b>Get Info</b>, pick OpenInNukeX "
+     "under <b>Open with</b> and click <b>Change All</b>.",
+     "La app quedo registrada en el sistema, pero macOS no le dio los .nk. Para terminar, "
+     "boton derecho sobre cualquier .nk en Finder, <b>Get Info</b>, elegi OpenInNukeX en "
+     "<b>Open with</b> y toca <b>Change All</b>."},
     {"Association finished with warnings", "La asociacion termino con advertencias"},
+    {"This copy is running from a build folder, so associating .nk files with it would break "
+     "as soon as that folder is rebuilt. Run the installed copy of OpenInNukeX instead.",
+     "Esta copia corre desde una carpeta de compilacion, asi que asociarle los .nk se rompe en "
+     "cuanto esa carpeta se regenere. Abri la copia instalada de OpenInNukeX y hacelo desde ahi."},
 }};
 
 static_assert(kTable.size() == static_cast<size_t>(I18n::Str::Count_),

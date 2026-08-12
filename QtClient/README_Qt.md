@@ -10,7 +10,7 @@ Cliente Qt/C++ multiplataforma para abrir archivos .nk en NukeX. Disponible para
 - **Multiplataforma**: mismo codebase para Windows y macOS con `#ifdef Q_OS_WIN` guards
 - **Sin ventana de consola**: aplicación GUI pura en ambas plataformas
 - **Apertura inteligente**: si NukeX está corriendo envía el archivo vía TCP; si no, lanza nueva instancia
-- **Asociación de archivos**: Windows requiere `SetUserFTA.exe` para dejar operativa la asociación `.nk`; macOS usa `lsregister` + `duti` opcional
+- **Asociación de archivos**: Windows requiere `SetUserFTA.exe` para dejar operativa la asociación `.nk`; macOS la resuelve con `lsregister` + la API de Launch Services, sin herramientas externas
 - **Configuración en AppData/Application Support**: archivos de configuración y logs en ubicación estándar del sistema
 - **Conexión TCP async**: conecta al servidor NukeX en puerto 54325 con timeout; sin bloqueos (`readyRead` signal)
 - **Fallback automático**: si no hay instancia activa de NukeX, lanza el ejecutable configurado con `--nukex`
@@ -118,8 +118,8 @@ despues lo purga del target.
 
 ### macOS
 - Registra el .app bundle con Launch Services: `lsregister -f LGA_OpenInNukeX.app`
-- Usa `duti` para establecer handler predeterminado: `duti -s com.lga.openinnukex .nk all`
-- Si `duti` no está instalado (Homebrew), muestra instrucciones para configurar manualmente en Finder
+- Se pone como handler predeterminado de los `.nk` llamando a `NSWorkspace setDefaultApplicationAtURL:toOpenContentType:` desde `src/macintegration.mm`. Es la misma API que usaba `duti` por dentro, así que ya no hace falta instalarlo por Homebrew
+- macOS muestra SU PROPIO cartel de confirmación antes de cambiar la asociación; no se puede saltear. Si el usuario lo rechaza (o la llamada falla), la app muestra las instrucciones para hacerlo a mano con Get Info + Change All
 
 ## Detección de Versiones Nuke (NukeScanner)
 
@@ -145,7 +145,7 @@ Los logs se borran al iniciar la app.
 | Qt | 6.5.3 + MinGW 13.1 | 6.5.3 (universal x86_64 + arm64) |
 | CMake | 3.16+ | 3.16+ |
 | OS | Windows 10/11 | macOS 12+ |
-| Extras | Ninja, LLVM/lld, Inno Setup (opcional) | Homebrew duti (opcional) |
+| Extras | Ninja, LLVM/lld, Inno Setup (opcional) | — |
 
 ## Referencias Técnicas
 

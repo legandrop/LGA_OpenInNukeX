@@ -77,19 +77,17 @@ Windows 10/11 tiene protecciones que detectan cuando una aplicación intenta cam
 
 ### Problema: Los archivos .nk no se abren con LGA_OpenInNukeX
 
-#### 1. Instalar duti (recomendado)
+#### 1. Contestar que sí al cartel del sistema
 
-`duti` es una herramienta de línea de comandos que establece handlers de archivos por defecto en macOS:
+Al tocar **APPLY**, macOS muestra su propio cartel preguntando si querés cambiar la aplicación
+con la que se abren los `.nk`. Ese cartel lo pone el sistema y no se puede saltear: si se
+contesta que no, la asociación no cambia. Volvé a tocar **APPLY** y aceptá.
 
-```bash
-brew install duti
-```
-
-Luego vuelve a hacer clic en **APPLY** en la ventana de configuración.
+La app ya no necesita `duti`: hace la misma llamada a Launch Services que hacía esa herramienta.
 
 #### 2. Configurar manualmente en Finder
 
-Si no quieres usar `duti`:
+Si el cartel no aparece o la asociación sigue sin tomar:
 
 1. Haz clic derecho en cualquier archivo `.nk` en el Finder
 2. Selecciona **"Obtener información"** (o `Cmd + I`)

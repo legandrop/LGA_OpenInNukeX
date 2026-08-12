@@ -40,6 +40,7 @@ enum class Str {
 
     // ── botones ──────────────────────────────────────────────────────────────
     BtnApply,
+    BtnReapply,
     BtnBrowse,
     BtnSave,
     BtnInstall,
@@ -95,6 +96,7 @@ enum class Str {
     TitleAssocAlmost,
     MsgAssocAlmost,
     TitleAssocWarnings,
+    MsgAssocDevTree,
 
     Count_,
 };

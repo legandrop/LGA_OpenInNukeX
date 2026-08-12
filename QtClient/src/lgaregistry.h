@@ -65,6 +65,15 @@ QString directory();
  */
 bool registerThisApp(const QString& appName, const QString& version);
 
+/**
+ * Si este binario corre desde una salida de DESARROLLO (arbol de build, `deploy/`, o adentro del
+ * repo) y no desde una instalacion. Es el mismo criterio que usa `registerThisApp` para saltearse
+ * el registro, expuesto porque la asociacion de archivos lo necesita: en macOS lo que se asocia
+ * al `.nk` es la RUTA del bundle, asi que un APPLY desde el build deja al Finder apuntando a una
+ * carpeta de compilacion que se borra en el proximo `limpiar`.
+ */
+bool runsFromDevTree();
+
 /** Guarda la carpeta `.nuke` que el usuario eligio, para que la vean las demas apps LGA. */
 bool saveNukeDirectory(const QString& nukeDir);
 

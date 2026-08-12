@@ -92,6 +92,14 @@ set(SOURCES
     src/dialogstyle.h
 )
 
+# El `.mm` solo entra en macOS: es Objective-C++ y adentro hay AppKit.
+if(APPLE)
+    list(APPEND SOURCES
+        src/macintegration.mm
+        src/macintegration.h
+    )
+endif()
+
 # El payload del Nuke Bridge: los `.py` que se instalan en `<.nuke>/LGA_OpenInNukeX/`.
 # Viven en la raiz del repo porque son TAMBIEN lo que se publica como plugin de Nuke; el
 # artefacto se los lleva adentro para poder instalarlos en una maquina sin el repo.
@@ -164,6 +172,13 @@ if(APPLE)
         # Con el nombre equivocado CMake no se queja y la sustitucion del plist queda vacia.
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.lga.openinnukex"
         MACOSX_BUNDLE_ICON_FILE "AppIcon.icns"
+    )
+
+    # Frameworks que usa src/macintegration.mm. UniformTypeIdentifiers es el que resuelve la
+    # extension `.nk` al UTI que Launch Services entiende.
+    target_link_libraries(LGA_OpenInNukeX
+        "-framework AppKit"
+        "-framework UniformTypeIdentifiers"
     )
 
     # Icono de macOS: pipeline Icon Composer. El icono se disena en

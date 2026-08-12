@@ -122,6 +122,10 @@ bool pathIsInside(const QString& appPath, const char* rootDirLiteral)
     return appPath.startsWith(rootDir + QLatin1Char('/'), cs);
 }
 
+} // namespace
+
+namespace LgaRegistry {
+
 /**
  * Si este binario esta corriendo desde una salida de DESARROLLO y no desde una instalacion.
  *
@@ -176,10 +180,6 @@ bool runsFromDevTree()
 #endif
     return false;
 }
-
-} // namespace
-
-namespace LgaRegistry {
 
 QString directory()
 {
