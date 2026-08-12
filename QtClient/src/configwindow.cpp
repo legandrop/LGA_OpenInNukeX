@@ -19,6 +19,8 @@
 #include <QMoveEvent>
 #include <QGridLayout>
 #include <QScrollBar>
+#include <QRegularExpression>
+#include <tuple>
 #include "appsettings.h"
 #include "dialogs.h"
 #include "dialogstyle.h"
@@ -1542,6 +1544,9 @@ void ConfigWindow::onScanFinished(const QList<NukeVersion> &versions)
     Logger::logInfo("Creando botones para las versiones encontradas...");
     // Crear botones para las versiones encontradas
     createVersionButtons(versions);
+
+    // Recien aca se sabe que hay instalado, asi que recien aca se puede corregir una ruta muerta.
+    healStalePath(versions);
     
     // Mostrar el contenedor de botones
     if (versionsButtonsWidget) {
@@ -1602,6 +1607,54 @@ void ConfigWindow::createVersionButtons(const QList<NukeVersion> &versions)
         
         Logger::logInfo(QString("Botón creado para: %1 -> %2").arg(version.displayName, version.path));
     }
+}
+
+namespace {
+
+/// Convierte "16.0v9" en una tupla comparable (16, 0, 9). Lo que no parsea queda en cero, asi
+/// que una version rara pierde contra cualquiera bien formada en vez de ganar por accidente.
+std::tuple<int, int, int> versionSortKey(const QString &version)
+{
+    static const QRegularExpression re(QStringLiteral("^(\\d+)\\.(\\d+)v(\\d+)"));
+    const QRegularExpressionMatch m = re.match(version);
+    if (!m.hasMatch())
+        return {0, 0, 0};
+    return {m.captured(1).toInt(), m.captured(2).toInt(), m.captured(3).toInt()};
+}
+
+} // namespace
+
+// El campo se carga desde nukeXpath.txt ANTES de que termine el escaneo, asi que puede quedar
+// mostrando una version que el usuario desinstalo hace meses. Sin esto, la ventana se veia
+// coherente —listaba las versiones que si estan— pero APPLY y SAVE fallaban con "ese archivo ya
+// no existe" sobre una ruta que el usuario no eligio en esa sesion y que no tenia motivo para
+// mirar. Se repone sola con la mas nueva encontrada, y se persiste: si no se guardara, el doble
+// click desde el Finder seguiria intentando lanzar el ejecutable muerto.
+void ConfigWindow::healStalePath(const QList<NukeVersion> &versions)
+{
+    if (!nukePathEdit || versions.isEmpty())
+        return;
+
+    const QString currentPath = nukePathEdit->text().trimmed();
+    if (!currentPath.isEmpty() && QFile::exists(currentPath))
+        return;
+
+    const NukeVersion *newest = &versions.first();
+    for (const NukeVersion &version : versions) {
+        if (versionSortKey(version.version) > versionSortKey(newest->version))
+            newest = &version;
+    }
+
+    if (currentPath.isEmpty()) {
+        Logger::logInfo(QString("Sin ruta configurada: se toma la version mas nueva encontrada (%1)")
+                            .arg(newest->displayName));
+    } else {
+        Logger::logInfo(QString("La ruta guardada ya no existe (%1): se repone con %2")
+                            .arg(currentPath, newest->displayName));
+    }
+
+    nukePathEdit->setText(newest->path);
+    saveNukePath(newest->path);
 }
 
 void ConfigWindow::onVersionButtonClicked()

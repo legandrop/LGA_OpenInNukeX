@@ -67,6 +67,9 @@ private:
     // Scanner de versiones
     void initializeScanner();
     void createVersionButtons(const QList<NukeVersion> &versions);
+    /// Si la ruta guardada apunta a una version de Nuke que ya no esta instalada, la reemplaza
+    /// por la mas nueva de las encontradas por el escaner. Ver el comentario del cuerpo.
+    void healStalePath(const QList<NukeVersion> &versions);
     void calculateAndResizeWindow();
     /// Alto que pide el contenido, ya recortado al tope de pantalla. Es tambien el maximo al
     /// que se puede estirar la ventana a mano: mas alto que esto solo agrega fondo vacio.
