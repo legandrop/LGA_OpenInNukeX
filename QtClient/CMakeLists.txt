@@ -163,15 +163,35 @@ if(APPLE)
         # GOTCHA: la propiedad se llama MACOSX_BUNDLE_GUI_IDENTIFIER, no ..._IDENTIFIER.
         # Con el nombre equivocado CMake no se queja y la sustitucion del plist queda vacia.
         MACOSX_BUNDLE_GUI_IDENTIFIER "com.lga.openinnukex"
-        MACOSX_BUNDLE_ICON_FILE "LGA_OpenInNukeX"
+        MACOSX_BUNDLE_ICON_FILE "AppIcon.icns"
     )
 
-    # Embed icon into the bundle
-    set(MACOSX_ICON "${CMAKE_SOURCE_DIR}/resources/LGA_OpenInNukeX.icns")
-    target_sources(LGA_OpenInNukeX PRIVATE "${MACOSX_ICON}")
-    set_source_files_properties("${MACOSX_ICON}" PROPERTIES
-        MACOSX_PACKAGE_LOCATION "Resources"
-    )
+    # Icono de macOS: pipeline Icon Composer. El icono se disena en
+    # resources/icons/Alta/OpenInNukeX.icon y se compila con actool (ver ../LGA_IconLab).
+    # Se copian DOS recursos y hacen falta los dos:
+    #   Assets.car    el icono moderno completo, que es lo que consume macOS 26 via
+    #                 CFBundleIconName. Sin esto no hay tratamiento moderno.
+    #   AppIcon.icns  fallback de compatibilidad, via CFBundleIconFile. Se genera con
+    #                 --standalone-icon-behavior all para que traiga TODOS los tamanos
+    #                 (16..1024); por defecto actool solo mete un subconjunto que llega
+    #                 hasta 256 px.
+    # NO convertir el .icon a un .icns suelto descartando el Assets.car: eso pierde el
+    # comportamiento moderno y reaparece el problema de tamano en Cmd+Tab.
+    if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icons/AppIcon.icns")
+        set(MACOSX_ICON_FILES "${CMAKE_SOURCE_DIR}/resources/icons/AppIcon.icns")
+        if(EXISTS "${CMAKE_SOURCE_DIR}/resources/icons/Assets.car")
+            list(APPEND MACOSX_ICON_FILES "${CMAKE_SOURCE_DIR}/resources/icons/Assets.car")
+        else()
+            message(WARNING "Falta resources/icons/Assets.car: el icono va a caer al .icns de "
+                            "compatibilidad y se pierde el icono moderno.")
+        endif()
+        target_sources(LGA_OpenInNukeX PRIVATE ${MACOSX_ICON_FILES})
+        set_source_files_properties(${MACOSX_ICON_FILES} PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources"
+        )
+    else()
+        message(WARNING "Falta resources/icons/AppIcon.icns: el bundle sale sin icono.")
+    endif()
 
     # Embed dark_theme.qss into the bundle Resources
     set(QSS_FILE "${CMAKE_SOURCE_DIR}/dark_theme.qss")

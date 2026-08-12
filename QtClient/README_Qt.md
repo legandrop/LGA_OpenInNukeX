@@ -31,7 +31,10 @@ QtClient/
 ├── resources/
 │   ├── LGA_NukeShortcuts.ico    # Icono app (Windows)
 │   ├── LGA_NukeShortcuts.png    # Icono fuente
-│   ├── LGA_OpenInNukeX.icns     # Icono app (macOS)
+│   ├── icons/
+│   │   ├── Alta/OpenInNukeX.icon # Fuente del icono macOS (Icon Composer)
+│   │   ├── AppIcon.icns         # Icono app macOS, fallback (CFBundleIconFile)
+│   │   └── Assets.car           # Icono app macOS moderno (CFBundleIconName)
 │   ├── app_icon.ico             # Icono para archivos .nk (Windows)
 │   ├── app_icon.png             # Icono fuente
 │   ├── ../LGA_OpenInNukeX.rc    # Recursos Windows usados por CMake (icono, versión)

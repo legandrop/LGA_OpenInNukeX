@@ -20,8 +20,15 @@
     <key>CFBundleExecutable</key>
     <string>@MACOSX_BUNDLE_EXECUTABLE_NAME@</string>
 
+    <!-- CFBundleIconName apunta al icono moderno dentro de Assets.car (Icon Composer);
+         es la clave que usa macOS 26. CFBundleIconFile es el fallback al .icns suelto.
+         Van las dos: sin la primera se pierde el tratamiento moderno, y sin la segunda
+         las herramientas que no leen el CAR se quedan sin icono. -->
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+
     <key>CFBundleIconFile</key>
-    <string>LGA_OpenInNukeX</string>
+    <string>@MACOSX_BUNDLE_ICON_FILE@</string>
 
     <key>CFBundlePackageType</key>
     <string>APPL</string>
