@@ -15,6 +15,9 @@
 #include <QTimer>
 #include <QSizePolicy>
 #include <QShowEvent>
+#include <QResizeEvent>
+#include <QGridLayout>
+#include <QScrollBar>
 #include "appsettings.h"
 #include "dialogs.h"
 #include "dialogstyle.h"
@@ -32,6 +35,15 @@ namespace {
 /// Ancho fijo de la ventana. Antes había DOS: 900 en el constructor y 800 en el resize, así
 /// que la ventana cambiaba de ancho sola al terminar el escaneo.
 constexpr int kWindowWidth = 800;
+
+/// Alto mínimo de la ventana.
+constexpr int kMinWindowHeight = 400;
+
+/// La ventana nunca ocupa más que esta fracción del alto USABLE de la pantalla (o sea ya
+/// descontados la barra de menú y el Dock). Con el panel manual desplegado el contenido pide
+/// más de lo que entra en un portátil, y una ventana pegada a los dos bordes se lee como si
+/// estuviera rota; el resto lo resuelve el scroll.
+constexpr double kMaxScreenFraction = 0.8;
 
 #ifdef Q_OS_WIN
 void applyDarkTitleBar(QWidget *window)
@@ -62,6 +74,7 @@ void applyDarkTitleBar(QWidget *window)
 
 ConfigWindow::ConfigWindow(QWidget *parent)
     : QWidget(parent)
+    , scrollArea(nullptr)
     , nukePathEdit(nullptr)
     , browseButton(nullptr)
     , saveButton(nullptr)
@@ -84,7 +97,8 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     , bridgeHintLabel(nullptr)
     , manualToggleButton(nullptr)
     , manualPanel(nullptr)
-    , manualStepsLabel(nullptr)
+    , manualStepNumbers{nullptr, nullptr, nullptr}
+    , manualStepTexts{nullptr, nullptr, nullptr}
     , manualCodeLabel(nullptr)
     , exportButton(nullptr)
     , copyLineButton(nullptr)
@@ -92,6 +106,9 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     , langEnButton(nullptr)
     , langEsButton(nullptr)
     , versionLabel(nullptr)
+    , userResizedHeight(false)
+    , programmaticResize(false)
+    , lastAppliedHeight(0)
 {
     Logger::logInfo("=== CONSTRUCTOR ConfigWindow INICIADO ===");
     
@@ -106,7 +123,18 @@ ConfigWindow::ConfigWindow(QWidget *parent)
     // Configurar ventana
     Logger::logInfo("Configurando ventana...");
     setWindowTitle("OpenInNukeX Config");
-    setFixedSize(kWindowWidth, 600);
+    // Ancho fijo, alto libre: el contenido es una columna de bloques de ancho fijo, así que
+    // estirar en X solo agrega fondo a los costados. En Y sí hay algo que ganar, porque el
+    // contenido puede no entrar en la pantalla.
+    setFixedWidth(kWindowWidth);
+    // El techo se fija YA, y no recién cuando termina el escaneo de versiones: hasta ese
+    // momento la ventana se podía estirar más allá del 80% de la pantalla, y ese estirón
+    // además contaba como un gesto del usuario y le desactivaba el auto-alto por el resto de
+    // la sesión. Se usa el tope de pantalla y no el del contenido porque acá el layout todavía
+    // no corrió: su sizeHint mediría de menos y dejaría la ventana corta hasta el primer
+    // recalculo.
+    const int cap = screenHeightCap();
+    applyWindowHeight(cap, qMin(600, cap));
     Logger::logInfo("✓ Ventana configurada");
 
     // Cargar estilo QSS
@@ -139,6 +167,32 @@ void ConfigWindow::showEvent(QShowEvent *event)
 #endif
 }
 
+void ConfigWindow::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+
+    if (programmaticResize || !isVisible()) {
+        return;
+    }
+    // `oldSize().height() > 0`: durante el armado de la ventana llegan resizes que no son del
+    // usuario y que tampoco pasan por el flag (los del propio layout al mostrarse).
+    if (event->oldSize().height() <= 0
+        || event->size().height() == event->oldSize().height()) {
+        return;
+    }
+    // Segunda línea de defensa: si el alto al que se llegó es exactamente el último que impuso
+    // la app, el resize es suyo aunque haya llegado con el flag apagado. Pasa de verdad: el
+    // `processEvents()` del recálculo despacha resizes pendientes fuera de esa ventana.
+    if (event->size().height() == lastAppliedHeight) {
+        return;
+    }
+
+    if (!userResizedHeight) {
+        Logger::logInfo("El usuario redimensionó la ventana: la app deja de imponer el alto");
+    }
+    userResizedHeight = true;
+}
+
 void ConfigWindow::setupUI()
 {
     // Crear el layout principal
@@ -147,7 +201,7 @@ void ConfigWindow::setupUI()
     mainLayout->setSpacing(0);
     
     // Crear un QScrollArea para permitir desplazamiento
-    QScrollArea *scrollArea = new QScrollArea(this);
+    scrollArea = new QScrollArea(this);
     scrollArea->setObjectName("darkScrollArea");
     scrollArea->setWidgetResizable(true);
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -177,7 +231,10 @@ void ConfigWindow::setupUI()
     // Layout para el contenido
     QVBoxLayout *centralLayout = new QVBoxLayout(contentWidget);
     centralLayout->setContentsMargins(20, 20, 20, 20);
-    centralLayout->setSpacing(24);
+    // 15 y no 24: es la separación entre bloques que ya usan el resto de las apps LGA
+    // (settingstab de PipeSync/FMS3). Con 24 los tres bloques se leían como tres pantallas
+    // distintas en vez de como una sola lista de opciones.
+    centralLayout->setSpacing(15);
     
     // Agregar el widget de contenido al layout horizontal centrado
     horizontalCenterLayout->addStretch();
@@ -200,29 +257,35 @@ void ConfigWindow::setupUI()
     fileAssociationLayout->setContentsMargins(20, 10, 20, 10);
     fileAssociationLayout->setSpacing(10);
 
-    // Título + APPLY en la MISMA fila: el botón actúa sobre todo el bloque, no sobre un
-    // campo, así que abajo del texto quedaba desconectado de lo que hace.
-    QHBoxLayout *fileAssociationHeader = new QHBoxLayout();
-    fileAssociationHeader->setContentsMargins(0, 0, 0, 0);
-    fileAssociationHeader->setSpacing(10);
-
     QLabel *fileAssociationTitle = new QLabel("File Association", fileAssociationGroup);
     fileAssociationTitle->setObjectName("sectionTitle");
-    fileAssociationHeader->addWidget(fileAssociationTitle);
-    fileAssociationHeader->addStretch();
+    fileAssociationLayout->addWidget(fileAssociationTitle);
 
-    applyButton = new QPushButton(TR(BtnApply), fileAssociationGroup);
-    applyButton->setFixedHeight(40);
-    applyButton->setProperty("class", "action");
-    fileAssociationHeader->addWidget(applyButton);
+    // APPLY va a la derecha del TEXTO, no del título, y los dos centrados verticalmente entre
+    // sí: alineado con el título quedaba a dos renglones de distancia de la explicación de lo
+    // que hace, con un hueco vacío en el medio que no significaba nada.
+    QHBoxLayout *fileAssociationBody = new QHBoxLayout();
+    fileAssociationBody->setContentsMargins(0, 0, 0, 0);
+    fileAssociationBody->setSpacing(20);
 
-    fileAssociationLayout->addLayout(fileAssociationHeader);
-
-    // Texto descriptivo
     descriptionLabel = new QLabel(TR(DescFileAssociation), fileAssociationGroup);
     descriptionLabel->setObjectName("sectionDescription");
     descriptionLabel->setWordWrap(true);
-    fileAssociationLayout->addWidget(descriptionLabel);
+    // El centrado vertical se hace DENTRO del label y no con un flag de alineación en el
+    // layout: con el flag, la caja se encoge a su sizeHint y un label con wordWrap mide mal
+    // (Qt no le consulta el heightForWidth). Así el label ocupa el alto de la fila —que lo
+    // fija el botón— y es el texto el que se centra adentro.
+    descriptionLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+    applyButton = new QPushButton(TR(BtnApply), fileAssociationGroup);
+    applyButton->setFixedHeight(40);
+    applyButton->setMinimumWidth(100);
+    applyButton->setProperty("class", "action");
+
+    fileAssociationBody->addWidget(descriptionLabel, 1);
+    fileAssociationBody->addWidget(applyButton, 0, Qt::AlignVCenter);
+
+    fileAssociationLayout->addLayout(fileAssociationBody);
 
     // Agregar el grupo de File Association al layout central
     centralLayout->addWidget(fileAssociationGroup);
@@ -441,12 +504,14 @@ void ConfigWindow::setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout)
     bridgeHintLabel->setTextFormat(Qt::RichText);
     bridgeLayout->addWidget(bridgeHintLabel);
 
-    // El enlace es un QPushButton plano y no un QLabel con <a href>: así hereda el foco y el
-    // teclado como cualquier otro control, y no hay que manejar linkActivated a mano.
+    // Es un QPushButton y no un QLabel con <a href> para heredar foco y teclado sin manejar
+    // linkActivated a mano. Y se ve COMO un botón: pintado de azul y sin caja parecía un
+    // enlace de texto, o sea algo que abre otra cosa, cuando en realidad despliega contenido
+    // acá mismo.
     manualToggleButton = new QPushButton(TR(LinkManualShow), bridgeGroup);
-    manualToggleButton->setProperty("class", "link");
+    manualToggleButton->setProperty("class", "toggle");
+    manualToggleButton->setFixedHeight(32);
     manualToggleButton->setCursor(Qt::PointingHandCursor);
-    manualToggleButton->setFlat(true);
 
     QHBoxLayout *manualToggleLayout = new QHBoxLayout();
     manualToggleLayout->setContentsMargins(0, 0, 0, 0);
@@ -461,18 +526,54 @@ void ConfigWindow::setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout)
 
     QVBoxLayout *manualLayout = new QVBoxLayout(manualPanel);
     manualLayout->setContentsMargins(0, 10, 0, 0);
-    manualLayout->setSpacing(10);
+    manualLayout->setSpacing(14);
 
-    manualStepsLabel = new QLabel(manualPanel);
-    manualStepsLabel->setObjectName("manualSteps");
-    manualStepsLabel->setTextFormat(Qt::RichText);
-    manualStepsLabel->setWordWrap(true);
-    manualLayout->addWidget(manualStepsLabel);
+    // Grilla de dos columnas: los números en la primera y el contenido en la segunda. Lo que
+    // esto compra es que la caja de código pueda ir en la columna del contenido, o sea con la
+    // misma sangría que el texto del paso 3 y por lo tanto leyéndose como parte de ese paso.
+    QGridLayout *stepsGrid = new QGridLayout();
+    stepsGrid->setContentsMargins(0, 0, 0, 0);
+    stepsGrid->setHorizontalSpacing(6);
+    stepsGrid->setVerticalSpacing(4);
+    stepsGrid->setColumnStretch(1, 1);
+
+    for (int i = 0; i < 3; ++i) {
+        manualStepNumbers[i] = new QLabel(QString("%1.").arg(i + 1), manualPanel);
+        manualStepNumbers[i]->setObjectName("manualSteps");
+        manualStepNumbers[i]->setAlignment(Qt::AlignRight | Qt::AlignTop);
+
+        manualStepTexts[i] = new QLabel(manualPanel);
+        manualStepTexts[i]->setObjectName("manualSteps");
+        manualStepTexts[i]->setTextFormat(Qt::RichText);
+        manualStepTexts[i]->setWordWrap(true);
+
+        stepsGrid->addWidget(manualStepNumbers[i], i, 0, Qt::AlignTop);
+        stepsGrid->addWidget(manualStepTexts[i], i, 1);
+    }
+
+    // La línea a pegar en el `init.py` y su botón de copiar, en la fila siguiente al paso 3 y
+    // en su misma columna. El botón va a la derecha de la línea, que es lo que copia: abajo,
+    // junto al de exportar, no se sabía cuál de las dos cosas copiaba. La caja se queda con el
+    // sobrante de la fila (stretch 1) en vez de ajustarse al texto, así el botón queda siempre
+    // en la misma posición y no se corre de lugar si algún día cambia el largo de la línea.
+    QHBoxLayout *codeRow = new QHBoxLayout();
+    codeRow->setContentsMargins(0, 0, 0, 0);
+    codeRow->setSpacing(8);
 
     manualCodeLabel = new QLabel(NukeBridge::pluginAddPathLine(), manualPanel);
     manualCodeLabel->setObjectName("manualCode");
     manualCodeLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    manualLayout->addWidget(manualCodeLabel);
+
+    copyLineButton = new QPushButton(TR(BtnCopyLine), manualPanel);
+    copyLineButton->setFixedHeight(34);
+    copyLineButton->setMinimumWidth(120);
+    copyLineButton->setProperty("class", "secondary");
+
+    codeRow->addWidget(manualCodeLabel, 1);
+    codeRow->addWidget(copyLineButton, 0);
+
+    stepsGrid->addLayout(codeRow, 3, 1);
+    manualLayout->addLayout(stepsGrid);
 
     QHBoxLayout *manualButtons = new QHBoxLayout();
     manualButtons->setContentsMargins(0, 0, 0, 0);
@@ -482,12 +583,7 @@ void ConfigWindow::setupBridgeGroup(QWidget *parent, QVBoxLayout *centralLayout)
     exportButton->setFixedHeight(34);
     exportButton->setProperty("class", "action");
 
-    copyLineButton = new QPushButton(TR(BtnCopyLine), manualPanel);
-    copyLineButton->setFixedHeight(34);
-    copyLineButton->setProperty("class", "secondary");
-
     manualButtons->addWidget(exportButton);
-    manualButtons->addWidget(copyLineButton);
     manualButtons->addStretch(1);
     manualLayout->addLayout(manualButtons);
 
@@ -651,7 +747,31 @@ void ConfigWindow::toggleManualPanel()
     const bool nowVisible = !manualPanel->isVisible();
     manualPanel->setVisible(nowVisible);
     manualToggleButton->setText(nowVisible ? TR(LinkManualHide) : TR(LinkManualShow));
+
+    // Agranda la ventana para que las instrucciones entren — salvo que el usuario ya la haya
+    // dimensionado a mano, en cuyo caso `calculateAndResizeWindow()` no le toca el alto y lo
+    // único que pasa es que aparece contenido nuevo más abajo.
     calculateAndResizeWindow();
+
+    if (nowVisible && scrollArea) {
+        // Diferido: recién después de que el layout acomodó el panel recién mostrado tiene
+        // sentido preguntarle dónde quedó. En la misma pasada, su geometría todavía es la que
+        // tenía estando oculto.
+        QTimer::singleShot(0, this, [this]() {
+            if (!scrollArea || !manualPanel || !manualPanel->isVisible()) {
+                return;
+            }
+            QWidget *content = scrollArea->widget();
+            if (!content) {
+                return;
+            }
+            // Se desplaza al TOPE del panel y no con `ensureWidgetVisible()`: ese, cuando el
+            // widget es más alto que el viewport —que es justo lo que pasa con la ventana
+            // achicada a mano—, lo centra, y entonces el paso 1 queda arriba del borde visible.
+            const int top = manualPanel->mapTo(content, QPoint(0, 0)).y();
+            scrollArea->verticalScrollBar()->setValue(top - 20);
+        });
+    }
 }
 
 void ConfigWindow::exportBridgeFiles()
@@ -745,9 +865,9 @@ void ConfigWindow::retranslateUi()
     bridgeBrowseButton->setText(TR(BtnBrowse));
     manualToggleButton->setText(manualPanel->isVisible() ? TR(LinkManualHide)
                                                          : TR(LinkManualShow));
-    manualStepsLabel->setText(
-        QStringLiteral("<ol style='margin-left:-20px;'><li>%1</li><li>%2</li><li>%3</li></ol>")
-            .arg(TR(ManualStep1), TR(ManualStep2), TR(ManualStep3)));
+    manualStepTexts[0]->setText(TR(ManualStep1));
+    manualStepTexts[1]->setText(TR(ManualStep2));
+    manualStepTexts[2]->setText(TR(ManualStep3));
     exportButton->setText(TR(BtnExport));
     copyLineButton->setText(TR(BtnCopyLine));
 
@@ -1447,6 +1567,57 @@ void ConfigWindow::onVersionButtonClicked()
     }
 }
 
+int ConfigWindow::screenHeightCap() const
+{
+    // El techo real es la PANTALLA, no un número fijo: con el panel manual desplegado el
+    // contenido pide más de lo que entra en un portátil, y una ventana más alta que el
+    // escritorio deja el pie —el selector de idioma y la versión— abajo del borde. Se toma el
+    // 80% del área USABLE (ya sin barra de menú ni Dock) para que además quede aire alrededor.
+    // Lo que no entra lo resuelve el QScrollArea que ya envuelve todo el contenido.
+    if (const QScreen *screen = this->screen()) {
+        const int cap = static_cast<int>(screen->availableGeometry().height() * kMaxScreenFraction);
+        return qMax(cap, kMinWindowHeight);
+    }
+    // Sin pantalla que consultar no hay techo que calcular: no se inventa uno, porque un tope
+    // arbitrario recortaría contenido en un monitor grande.
+    return QWIDGETSIZE_MAX;
+}
+
+void ConfigWindow::applyWindowHeight(int maxHeight, int targetHeight)
+{
+    // El flag envuelve TAMBIÉN a los setters de límites, no sólo al `resize()`: cuando el
+    // máximo nuevo queda por debajo del alto actual, `QWidget::setMaximumSize()` hace un
+    // `resize()` adentro, y ese resize llegaba a `resizeEvent()` con el flag apagado. O sea
+    // que plegar el panel manual —que baja el máximo— se registraba como si el usuario hubiera
+    // redimensionado la ventana, y desde ahí volver a desplegarlo ya no la agrandaba nunca
+    // más. Justo el caso que tiene que funcionar.
+    programmaticResize = true;
+    setMinimumHeight(kMinWindowHeight);
+    setMaximumHeight(maxHeight);
+    if (targetHeight > 0) {
+        resize(kWindowWidth, targetHeight);
+    }
+    lastAppliedHeight = height();
+    programmaticResize = false;
+}
+
+int ConfigWindow::preferredWindowHeight() const
+{
+    const QWidget *centralWidget = this->findChild<QWidget*>("centralSettingsWidget");
+    if (!centralWidget) {
+        return kMinWindowHeight;
+    }
+
+    // Márgenes de la ventana más el ancho de una posible barra de scroll: sin ese colchón la
+    // ventana queda exactamente un pelo corta y aparece scroll cuando no hacía falta.
+    const int margins = 40;
+    const int scrollBarSpace = 20;
+    const int totalHeight = qMin(centralWidget->sizeHint().height() + margins + scrollBarSpace,
+                                 screenHeightCap());
+
+    return qMax(totalHeight, kMinWindowHeight);
+}
+
 void ConfigWindow::calculateAndResizeWindow()
 {
     Logger::logInfo("=== CALCULANDO Y REDIMENSIONANDO VENTANA ===");
@@ -1471,52 +1642,25 @@ void ConfigWindow::calculateAndResizeWindow()
     this->updateGeometry();
     QApplication::processEvents();
     
-    // Obtener el tamaño recomendado del contenido principal
-    QWidget *centralWidget = this->findChild<QWidget*>("centralSettingsWidget");
-    if (!centralWidget) {
+    if (!this->findChild<QWidget*>("centralSettingsWidget")) {
         Logger::logError("ERROR: No se pudo encontrar centralSettingsWidget");
         return;
     }
-    
-    // Calcular la altura necesaria basándose en el contenido
-    int contentHeight = centralWidget->sizeHint().height();
-    Logger::logInfo(QString("Altura sugerida del contenido: %1").arg(contentHeight));
-    
-    // Agregar márgenes y espacios adicionales
-    int margins = 40; // Márgenes superior e inferior
-    int scrollBarSpace = 20; // Espacio para posible scroll bar
-    int totalHeight = contentHeight + margins + scrollBarSpace;
-    
-    // Establecer límites mínimos y máximos. El máximo subió al agregarse el tercer bloque
-    // (con el panel manual desplegado el contenido no entraba en 1000), pero el techo real es
-    // la PANTALLA: la ventana es de tamaño fijo, así que una altura mayor que el escritorio
-    // deja el pie —el selector de idioma y la versión— abajo del borde y sin forma de
-    // llegar. Medido: con el panel manual abierto en un portátil, el pie desaparecía.
-    // Cuando no entra, el QScrollArea que ya envuelve el contenido se hace cargo.
-    int minHeight = 400;
-    int maxHeight = 1200;
-    if (QScreen *screen = this->screen()) {
-        const int usable = screen->availableGeometry().height() - 60;
-        if (usable > minHeight) {
-            maxHeight = qMin(maxHeight, usable);
-        }
-    }
-    
-    // Ajustar dentro de los límites
-    if (totalHeight < minHeight) {
-        totalHeight = minHeight;
-        Logger::logInfo(QString("Altura ajustada al mínimo: %1").arg(totalHeight));
-    } else if (totalHeight > maxHeight) {
-        totalHeight = maxHeight;
-        Logger::logInfo(QString("Altura ajustada al máximo: %1").arg(totalHeight));
-    }
-    
-    Logger::logInfo(QString("Altura final calculada: %1").arg(totalHeight));
-    
-    // Redimensionar la ventana manteniendo el ancho fijo
-    this->setFixedSize(kWindowWidth, totalHeight);
 
-    Logger::logInfo(QString("Ventana redimensionada a: %1x%2").arg(kWindowWidth).arg(totalHeight));
+    const int totalHeight = preferredWindowHeight();
+    Logger::logInfo(QString("Altura preferida calculada: %1").arg(totalHeight));
+
+    // El tope de la ventana es la altura que PIDE el contenido: más allá de eso, estirar solo
+    // agrega fondo vacío abajo. El piso permite achicarla, y ahí se hace cargo el QScrollArea.
+    //
+    // Si el usuario ya eligió un alto no se lo pisamos: se le aplican los límites y nada más.
+    // El recorte al nuevo máximo lo hace `setMaximumHeight()` por su cuenta cuando hace falta
+    // —por ejemplo al plegar el panel manual, que deja a la ventana más alta que su contenido—
+    // y por eso ese setter también va envuelto en el flag.
+    applyWindowHeight(totalHeight, userResizedHeight ? 0 : totalHeight);
+    Logger::logInfo(QString("Ventana: alto %1, maximo %2, impuesto por la app: %3")
+                        .arg(height()).arg(totalHeight)
+                        .arg(userResizedHeight ? "no" : "si"));
 
     // Clampear la altura NO alcanza: la ventana crece hacia ABAJO desde donde ya estaba, así
     // que una que entra en la pantalla igual puede terminar con el pie por debajo del borde.

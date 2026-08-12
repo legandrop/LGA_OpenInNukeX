@@ -205,20 +205,24 @@ QComboBox#assigneeFilter[filtered="true"]::down-arrow {
 }
 
 /* ------------------------------ Estilos para Settings ------------------------------ */
-/* Estilo para los títulos de cada sección de settings (File Association, Preferred Nuke Version) */
+/* Estilo para los títulos de cada sección de settings (File Association, Preferred Nuke Version)
+ * El violeta es el mismo token `titulo_seccion` (#775ECF) que usan PipeSync y FileManagerS3
+ * para los títulos de sección: la convención LGA es que se vean iguales entre apps. */
 QLabel#sectionTitle {
-    color: #E0E0E0;
+    color: #775ECF;
     font-family: "Inter", Arial, Helvetica;
     font-weight: 500;
     font-size: 20px;
     letter-spacing: 0px;
 }
 
-/* Estilo para fondos de cada widget de settings */
+/* Estilo para fondos de cada widget de settings.
+ * El radio es el token `radio_card` (8px) de PipeSync, por la misma razón que el color del
+ * título: los bloques de settings tienen que verse iguales en todas las apps LGA. */
 QGroupBox {
     background-color: #1d1d1d; /* bg_items */
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     margin-top: 1ex;
     padding-top: 10px;
     padding-bottom: 10px;
@@ -381,30 +385,43 @@ QLabel#manualSteps {
 }
 
 /* La linea que el usuario tiene que pegar en su init.py: monoespaciada y en su propia caja,
- * para que se lea como algo a copiar y no como parte de la explicacion. */
+ * para que se lea como algo a copiar y no como parte de la explicacion.
+ *
+ * El texto va en gris comun y NO en violeta: el violeta es el color de los titulos de seccion
+ * y de los botones de accion, asi que aca sugeria una jerarquia que esta linea no tiene. */
 QLabel#manualCode {
     background-color: #161616;
     border: 1px solid #303030;
     border-radius: 3px;
     padding: 8px 10px;
-    color: #c8c0e8;
+    color: #B2B2B2;
     font-family: "SF Mono", Menlo, Consolas, monospace;
     font-size: 13px;
 }
 
-/* Enlace de texto: es un QPushButton para heredar foco y teclado, pero no se ve como boton. */
-QPushButton.link {
-    background-color: transparent;
-    color: #4A9EFF;
-    border: none;
-    padding: 2px 0px;
-    text-align: left;
+/* Boton que despliega las instrucciones manuales. Antes era `class="link"`: azul, sin caja y
+ * sin borde, o sea con la pinta de un enlace que lleva a otro lado, cuando en realidad abre
+ * contenido en esta misma ventana. Con caja y borde se lee como lo que es. */
+QPushButton.toggle {
+    background-color: #2a2a2a;
+    border: 1px solid #3b3b3b;
+    border-radius: 5px;
+    color: #B2B2B2;
+    padding: 6px 14px;
     font-size: 13px;
-    font-weight: 400;
+    font-weight: 500;
+    text-align: center;
 }
 
-QPushButton.link:hover {
-    color: #7FBBFF;
+QPushButton.toggle:hover {
+    background-color: #3a3a3a;
+    border-color: #5D5D5D;
+    color: #D6D6D6;
+}
+
+QPushButton.toggle:pressed {
+    background-color: #3a3a3a;
+    border-color: #5D5D5D;
 }
 
 /* ------------------------------ Selector de idioma ------------------------------ */

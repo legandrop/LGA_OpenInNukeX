@@ -22,6 +22,7 @@
 
 class QFlowLayout;
 class QShowEvent;
+class QResizeEvent;
 class QTimer;
 
 class ConfigWindow : public QWidget
@@ -33,6 +34,8 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    /// Distingue el resize del USUARIO del que hace la app: ver `userResizedHeight`.
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void browseNukePath();
@@ -63,6 +66,16 @@ private:
     void initializeScanner();
     void createVersionButtons(const QList<NukeVersion> &versions);
     void calculateAndResizeWindow();
+    /// Alto que pide el contenido, ya recortado al tope de pantalla. Es tambien el maximo al
+    /// que se puede estirar la ventana a mano: mas alto que esto solo agrega fondo vacio.
+    int preferredWindowHeight() const;
+    /// El 80% del alto USABLE de la pantalla actual. Es el techo duro, independiente de lo que
+    /// pida el contenido.
+    int screenHeightCap() const;
+    /// Aplica limites y, si `targetHeight` es positivo, tambien el alto, marcando todo como
+    /// propio de la app. Todo cambio de geometria pasa por aca: ver `programmaticResize` para
+    /// por que no alcanza con envolver el `resize()`.
+    void applyWindowHeight(int maxHeight, int targetHeight);
 
     // Idioma
     void setLanguage(I18n::Lang lang);
@@ -89,6 +102,10 @@ private:
     QString getAppBundlePath() const;
     QString resolveNukeBinaryFromBundle(const QString &bundlePath) const;
 #endif
+
+    /// El area de scroll de toda la ventana. Es miembro porque el panel manual necesita
+    /// pedirle que desplace hasta el contenido recien desplegado.
+    QScrollArea *scrollArea;
 
     QLineEdit *nukePathEdit;
     QPushButton *browseButton;
@@ -118,7 +135,12 @@ private:
     QLabel *bridgeHintLabel;
     QPushButton *manualToggleButton;
     QWidget *manualPanel;
-    QLabel *manualStepsLabel;
+    /// Los tres pasos van en labels SEPARADOS dentro de una grilla, y no en un unico
+    /// `<ol>`: la caja con la linea de `pluginAddPath` tiene que quedar sangrada exactamente
+    /// como el texto del paso 3, y la sangria que Qt le da a una lista rica no es un numero
+    /// que se pueda replicar desde el layout.
+    QLabel *manualStepNumbers[3];
+    QLabel *manualStepTexts[3];
     QLabel *manualCodeLabel;
     QPushButton *exportButton;
     QPushButton *copyLineButton;
@@ -128,6 +150,21 @@ private:
     QPushButton *langEnButton;
     QPushButton *langEsButton;
     QLabel *versionLabel;
+
+    /// True apenas el usuario estira o achica la ventana a mano. Desde ese momento la app no
+    /// vuelve a imponerle un alto: desplegar el panel manual solo agrega contenido y desplaza
+    /// hasta el, en vez de agrandar la ventana por debajo de las manos del usuario.
+    bool userResizedHeight;
+    /// Marca los resize que hace la propia app, para que `resizeEvent()` no los confunda con
+    /// los del usuario. Tiene que envolver TAMBIEN a `setMinimumHeight()`/`setMaximumHeight()`:
+    /// `QWidget::setMaximumSize()` hace un `resize()` adentro cuando el maximo nuevo queda por
+    /// debajo del alto actual, y ese resize llega a `resizeEvent()` como cualquier otro.
+    bool programmaticResize;
+    /// Ultimo alto que impuso la app. Es la segunda linea de defensa del flag de arriba: el
+    /// `processEvents()` del recalculo despacha resizes pendientes FUERA de la ventana en la
+    /// que el flag esta prendido, y sin esto cualquiera de ellos se registraba como un gesto
+    /// del usuario.
+    int lastAppliedHeight;
 };
 
 #endif // CONFIGWINDOW_H
