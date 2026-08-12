@@ -290,6 +290,35 @@ if [ "$CREATE_DMG" = "true" ]; then
     bash ./create_dmg.sh --no-open
 fi
 
+# Publicacion en GitHub. Es el equivalente de la pregunta que hace instalador.bat en Windows:
+# en macOS no hay instalador, el artefacto distribuible sale de aca.
+#
+# Se ofrece SOLO con los dos assets presentes, porque la release los lleva juntos y
+# github_release_mac.sh aborta si le falta alguno. Y solo con terminal: el generador de
+# release del repo privado corre `deploy.sh </dev/null` y publica por su cuenta, asi que sin
+# tty no hay que preguntar nada.
+#
+# LGA_SKIP_RELEASE_PROMPT corta el bucle: github_release_mac.sh puede volver a llamar a
+# deploy.sh (sus modos que regeneran el deploy), y ahi esta pregunta no tiene que reaparecer.
+RELEASE_ZIP="deploy/${ARTIFACT_NAME}_v${APP_VERSION}_mac.zip"
+RELEASE_DMG="deploy/${ARTIFACT_NAME}_v${APP_VERSION}_mac.dmg"
+if [ -t 0 ] && [ "${LGA_SKIP_RELEASE_PROMPT:-}" != "1" ] \
+   && [ -f "$RELEASE_ZIP" ] && [ -f "$RELEASE_DMG" ]; then
+    echo ""
+    if ask_yes_no "Publicar el release v${APP_VERSION} en GitHub?"; then
+        # --use-existing-deploy: lo que se acaba de construir y verificar es exactamente lo
+        # que se quiere publicar. Sin el flag el publicador pregunta si reusarlo y, por
+        # defecto, lo reconstruye entero.
+        #
+        # El `||` no es opcional: bajo `set -e` un fallo de la publicacion mataria el script
+        # y reportaria como fallido un deploy que salio bien. La publicacion es un extra.
+        if ! LGA_SKIP_RELEASE_PROMPT=1 bash ./github_release_mac.sh --use-existing-deploy; then
+            echo ""
+            echo "AVISO: la publicacion en GitHub fallo. Los artefactos locales quedaron en deploy/."
+        fi
+    fi
+fi
+
 if [ "$NO_OPEN_FINDER" = "false" ] && [ -t 0 ]; then
     # El `if` y no un `&&` suelto: siendo el ultimo comando del script, un `&&` que no se
     # ejecuta deja exit code 1, o sea que contestar "N" hacia que el deploy —exitoso— se

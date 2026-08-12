@@ -101,12 +101,34 @@ if exist "%INSTALLER_FILE%" (
     echo - Desinstalador completo incluido
     echo.
 
+    REM LGA_SKIP_INSTALLER_RUN_PROMPT lo setean los dos flujos que invocan este
+    REM .bat como un paso intermedio: el generador de release del repo privado
+    REM _LGA_ReleaseGen-OpenInNukeX.bat y github_release_win.bat. Los dos publican
+    REM por su cuenta, asi que las dos preguntas de abajo sobran; y en el caso del
+    REM segundo, preguntar seria ademas un bucle.
+    REM
+    REM Estos comentarios van sin parentesis a proposito: un REM adentro de un
+    REM bloque sigue siendo texto que cmd parsea, y un parentesis de cierre
+    REM suelto le cierra el bloque antes de tiempo.
     if /i "%LGA_SKIP_INSTALLER_RUN_PROMPT%"=="1" (
-        echo [INFO] Se omite la ejecucion interactiva del instalador porque el release lo invoco en modo no interactivo.
+        echo [INFO] Se omiten las preguntas finales: el instalador fue invocado como paso de un release.
     ) else (
         set /p "TEST_INSTALLER=Queres ejecutar el instalador ahora? (y/n): "
         if /i "!TEST_INSTALLER!"=="y" (
             start "" "%INSTALLER_FILE%"
+        )
+
+        echo.
+        REM --use-existing-installer: el Setup.exe que se acaba de generar es
+        REM exactamente el que se quiere publicar. Sin el flag el publicador
+        REM volveria a preguntar si reusarlo y, por defecto, lo regeneraria.
+        set /p "PUBLISH_RELEASE=Queres subir el release a GitHub? (y/n): "
+        if /i "!PUBLISH_RELEASE!"=="y" (
+            call "%QTCLIENT_DIR%\github_release_win.bat" --use-existing-installer
+            if errorlevel 1 (
+                echo.
+                echo [ERROR] La publicacion en GitHub fallo. El instalador local quedo generado igual.
+            )
         )
     )
 ) else (

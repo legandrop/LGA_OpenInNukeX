@@ -228,6 +228,11 @@ fi
 
 if [[ "$DEPLOY_MODE" == "rebuild" || ! -f "$DMG_PATH" ]]; then
     bash ./create_dmg.sh --no-open
+elif [[ "$DEPLOY_MODE" == "use-existing" ]]; then
+    # Con --use-existing-deploy no se vuelve a preguntar: quien pasa ese flag ya decidio
+    # reusar lo que hay. Preguntarlo igual era una pregunta de mas cuando deploy.sh encadena
+    # aca, porque el DMG lo acaba de generar dos lineas antes.
+    echo "Usando el DMG existente: $(basename "$DMG_PATH")"
 else
     echo "DMG existente detectado: $(basename "$DMG_PATH")"
     if ! confirm "Usar este DMG existente?"; then

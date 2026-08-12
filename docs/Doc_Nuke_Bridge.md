@@ -83,8 +83,8 @@ busca el consumidor", y para esta app el consumidor es PipeSync y no `FM_UpdateS
 
 ## La forma del zip
 
-Igual que la del `_win.zip` que ya se publicaba: el release lleva **la app y el componente de
-Nuke juntos**, porque hay un solo release para las dos cosas.
+Igual que la del `_win.zip`: el release lleva **la app y el componente de Nuke juntos**,
+porque hay un solo release para las dos cosas.
 
 ```
 LGA_OpenInNukeX/         init.py + LGA_QtAdapter_OpenInNukeX.py + VERSION
@@ -97,6 +97,24 @@ Los dos scripts salen del repo de release, no de este: ver el contrato 3.
 
 El payload del zip se toma **del bundle ya firmado**, no del repo: así lo que se publica es
 exactamente lo que la app instala, y no dos copias que puedan divergir.
+
+## Quién arma y publica cada zip
+
+Hay **dos** productores por plataforma, y los dos tienen que dar el mismo artefacto:
+
+| | Arma el zip | Publica |
+|---|---|---|
+| macOS | `QtClient/deploy.sh --zip` | `QtClient/github_release_mac.sh`, que `deploy.sh` ofrece al final |
+| Windows | `QtClient/github_release_win.bat` | el mismo script, que `instalador.bat` ofrece al final |
+| ambas | `LGA_Release/_LGA_ReleaseGen-OpenInNukeX.{bat,sh}` | el mismo generador |
+
+El generador del repo de release hace además el bump de versión, el commit y el tag; los
+scripts de acá publican lo que ya está commiteado en `main`. Los dos flujos silencian las
+preguntas del otro con `LGA_SKIP_INSTALLER_RUN_PROMPT` (Windows) y la ausencia de tty (macOS),
+así que no se pisan ni se llaman en círculo.
+
+En Windows el zip **no** lo puede armar `deploy.bat` como hace `deploy.sh` en macOS: lleva
+adentro el `LGA_OpenInNukeX_Setup.exe`, que recién existe después de que Inno Setup corra.
 
 ## De dónde saca la app los `.py`
 
