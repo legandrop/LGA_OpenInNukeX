@@ -1,3 +1,8 @@
+v1.81: 
+
+    - MinGW ignoraba `__declspec(uuid)` en `IOpenWithLauncher` con warning en cada build; el IID ya se pasaba a mano en `CoCreateInstance`, asi que el atributo era redundante y se saco. `bump_version.bat` deja de ser alias mudo de `sync_version`: al terminar el bump pregunta si commitear (`Version - Bump a vX.YY`) y si correr `QtClient/instalador.bat`, igual que FileManagerS3. `sync_version.bat` sigue sin prompts para los scripts de release. [ OpenInNukeX - Warning MinGW y bump_version interactivo ]
+
+
 v1.80: 
 
     - APPLY en Windows deja de depender de `SetUserFTA.exe`. En Windows 11 con `UserChoiceLatest` activo, la edicion personal de SetUserFTA falla con *AppDefaultHashRotation is ACTIVE* aunque el ProgID y el registro esten bien. La asociacion pasa a un modulo nativo (`winfileassociation.cpp`) al estilo LinkRedirector: escribe el ProgID y las Capabilities en HKCU, calcula el hash UserChoice cuando el sistema todavia lo acepta, y si Windows 11 exige confirmacion abre el selector nativo de app por defecto o la pagina de Apps predeterminadas. El boton APPLY/RE-APPLY en Windows lee `UserChoice`/`UserChoiceLatest` y compara el ProgID. SetUserFTA queda opcional en build y deploy. [ OpenInNukeX - Asociacion de .nk en Windows sin SetUserFTA ]

@@ -34,7 +34,9 @@ constexpr wchar_t kUserExperience[] =
     L"{D18B6DD5-6124-4341-9318-804003BAFA0B}";
 
 // Chromium: IOpenWithLauncher para abrir el selector nativo de app por defecto.
-struct __declspec(uuid("6A283FE2-ECFA-4599-91C4-E80957137B26")) IOpenWithLauncher : public IUnknown
+// El IID se pasa a mano en launchOpenWithPicker(); __declspec(uuid) solo aplica en MSVC
+// y MinGW lo ignora con warning.
+struct IOpenWithLauncher : public IUnknown
 {
     virtual HRESULT STDMETHODCALLTYPE Launch(HWND hWndParent, const wchar_t *lpszPath,
                                              int flags) = 0;

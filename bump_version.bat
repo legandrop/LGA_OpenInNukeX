@@ -1,7 +1,12 @@
 @echo off
 setlocal
 
-echo AVISO: bump_version.bat esta deprecated. Usar sync_version.bat.
-call "%~dp0sync_version.bat" %*
+set "SCRIPT=%~dp0tools\sync_version.py"
+if not exist "%SCRIPT%" (
+    echo ERROR: No se encontro "%SCRIPT%".
+    exit /b 1
+)
+
+python "%SCRIPT%" --interactive %*
 set "EXIT_CODE=%ERRORLEVEL%"
 endlocal & exit /b %EXIT_CODE%
