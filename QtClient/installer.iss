@@ -1,8 +1,8 @@
 ; Script generado por Inno Setup Script Wizard.
-; LGA OpenInNukeX v1.79 Installer
+; LGA OpenInNukeX v1.80 Installer
 
 #define MyAppName "LGA OpenInNukeX"
-#define MyAppVersion "1.79"
+#define MyAppVersion "1.80"
 #define MyAppPublisher "LGA"
 #define MyAppURL "https://github.com/LGA"
 #define MyAppExeName "LGA_OpenInNukeX.exe"
