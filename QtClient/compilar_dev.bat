@@ -144,7 +144,9 @@ if errorlevel 1 exit /b 1
 
 copy /Y "%QTCLIENT_DIR%\dark_theme.qss" "%BUILD_DIR%\dark_theme.qss" >nul
 copy /Y "%QTCLIENT_DIR%\resources\app_icon.ico" "%BUILD_DIR%\app_icon.ico" >nul
-copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%BUILD_DIR%\SetUserFTA.exe" >nul
+if exist "%QTCLIENT_DIR%\resources\SetUserFTA.exe" (
+    copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%BUILD_DIR%\SetUserFTA.exe" >nul
+)
 
 if /I "%NO_DEPLOY%"=="true" goto verify
 
@@ -169,10 +171,6 @@ if not exist "%BUILD_DIR%\dark_theme.qss" (
 )
 if not exist "%BUILD_DIR%\app_icon.ico" (
     echo ERROR: Falta app_icon.ico en build.
-    exit /b 1
-)
-if not exist "%BUILD_DIR%\SetUserFTA.exe" (
-    echo ERROR: Falta SetUserFTA.exe en build.
     exit /b 1
 )
 

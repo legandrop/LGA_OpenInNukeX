@@ -49,11 +49,6 @@ set "DEPLOY_DIR=%RELEASE_DIR%\deploy"
 set "QT_DIR=C:\Qt\6.5.3\mingw_64"
 set "MINGW_DIR=C:\Qt\Tools\mingw1310_64"
 
-if not exist "%QTCLIENT_DIR%\resources\SetUserFTA.exe" (
-    echo ERROR: Falta resources\SetUserFTA.exe.
-    exit /b 1
-)
-
 REM --release y NO el build de desarrollo: lo que se publica tiene que ir optimizado y sin
 REM asserts. Y SIN --no-deploy: el bundle de deploy tiene que pasar por windeployqt.
 call "%~dp0compilar_dev.bat" --release --no-run %PARALLEL_ARGS%
@@ -81,7 +76,9 @@ if errorlevel 1 exit /b 1
 REM Refrescar los recursos propios por si se tocaron despues del build.
 copy /Y "%QTCLIENT_DIR%\dark_theme.qss" "%DEPLOY_DIR%\" >nul
 copy /Y "%QTCLIENT_DIR%\resources\app_icon.ico" "%DEPLOY_DIR%\" >nul
-copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%DEPLOY_DIR%\" >nul
+if exist "%QTCLIENT_DIR%\resources\SetUserFTA.exe" (
+    copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%DEPLOY_DIR%\" >nul
+)
 
 REM Sacar del deploy lo que es del arbol de build y no del producto. La lista tiene que
 REM cubrir TODO lo que genera Ninja/CMake: lo que quede aca se lo lleva despues Inno Setup
@@ -110,7 +107,6 @@ for %%F in (
     Qt6Network.dll
     dark_theme.qss
     app_icon.ico
-    SetUserFTA.exe
 ) do (
     if not exist "%DEPLOY_DIR%\%%F" (
         echo ERROR: Falta %%F en el deploy.

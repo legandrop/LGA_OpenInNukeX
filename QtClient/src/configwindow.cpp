@@ -915,12 +915,12 @@ void ConfigWindow::refreshApplyButtonText()
     // asocia nada nuevo: rehace el registro, que es lo que sirve cuando la asociacion quedo
     // apuntando a una copia vieja o el Finder dejo de reconocerla.
     //
-    // En Windows no hay equivalente barato de esta consulta —habria que leer el UserChoice del
-    // registro y compararlo contra el ProgID— asi que ahi el boton se queda en APPLY.
+    // En Windows la consulta equivalente lee UserChoice/UserChoiceLatest y compara el ProgID.
 #ifdef Q_OS_MACOS
     applyButton->setText(MacIntegration::isDefaultNkHandler() ? TR(BtnReapply) : TR(BtnApply));
 #else
-    applyButton->setText(TR(BtnApply));
+    applyButton->setText(WinFileAssociation::isNkAssociatedWithUs() ? TR(BtnReapply)
+                                                                     : TR(BtnApply));
 #endif
 }
 
@@ -1121,22 +1121,30 @@ void ConfigWindow::applyFileAssociation()
 
 #ifdef Q_OS_WIN
     try {
-        Logger::logInfo("Ejecutando comandos de registro (Windows)");
-        // UN SOLO cartel al final, no dos. Antes executeRegistryCommands() mostraba su propia
-        // advertencia con los errores y despues, de vuelta aca, salia el "ya podes hacer doble
-        // click" — o sea que con SetUserFTA.exe faltante (el caso comun) el usuario veia el
-        // aviso de que fallo e inmediatamente uno diciendole que funcionaba.
-        const QStringList errors = executeRegistryCommands();
-        if (errors.isEmpty()) {
+        Logger::logInfo("Ejecutando asociacion nativa de Windows");
+        const WinFileAssociation::ApplyOutcome outcome =
+            WinFileAssociation::apply(reinterpret_cast<HWND>(winId()));
+        if (outcome.result == WinFileAssociation::ApplyResult::Success) {
             Logger::logInfo("Asociación completada exitosamente");
+            refreshApplyButtonText();
             Dialogs::info(this, TR(TitleAssocDone), TR(MsgAssocDone));
+        } else if (outcome.result == WinFileAssociation::ApplyResult::NeedsUserConfirmation) {
+            Logger::logInfo("Asociación registrada; falta confirmación del usuario en Windows");
+            if (!outcome.errors.isEmpty()) {
+                Logger::logError(QString("Asociación con advertencias: %1")
+                                     .arg(outcome.errors.join("; ")));
+            }
+            Dialogs::info(this, TR(TitleAssocWindowsConfirm), TR(MsgAssocWindowsConfirm));
         } else {
+            const QStringList errors =
+                outcome.errors.isEmpty()
+                    ? QStringList{QStringLiteral("Error al configurar asociación")}
+                    : outcome.errors;
             Logger::logError(QString("Asociación con errores: %1").arg(errors.join("; ")));
-            // El cuerpo del mensaje va gris y SOLO lo que fallo va en blanco.
             Dialogs::warn(this, TR(TitleAssocWarnings),
                           DialogStyle::emphasis(errors.join(QStringLiteral("<br>"))));
         }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         Logger::logError(QString("Excepción durante asociación: %1").arg(e.what()));
         Dialogs::error(this, TR(TitleError),
                        QString::fromUtf8(e.what()));
@@ -1197,175 +1205,8 @@ bool ConfigWindow::executeCommand(const QString &program, const QStringList &arg
 
 QStringList ConfigWindow::executeRegistryCommands()
 {
-    Logger::logInfo("=== EJECUTANDO COMANDOS DE REGISTRO ===");
-    QStringList errors;
-
-    Logger::logInfo("PASO 1: Limpiando registro...");
-    if (!cleanRegistry()) {
-        errors << "Error al limpiar el registro";
-        Logger::logError("PASO 1 FALLÓ");
-    } else {
-        Logger::logInfo("PASO 1 COMPLETADO");
-    }
-
-    Logger::logInfo("Esperando 1 segundo para que Windows procese...");
-    QThread::msleep(1000);
-
-    Logger::logInfo("PASO 2: Registrando ProgID...");
-    if (!registerProgId()) {
-        errors << "Error al registrar ProgID";
-        Logger::logError("PASO 2 FALLÓ");
-    } else {
-        Logger::logInfo("PASO 2 COMPLETADO");
-    }
-
-    Logger::logInfo("PASO 3: Configurando asociación...");
-    if (!setFileAssociation()) {
-        errors << "Error al configurar asociación";
-        Logger::logError("PASO 3 FALLÓ");
-    } else {
-        Logger::logInfo("PASO 3 COMPLETADO");
-    }
-
-    Logger::logInfo("PASO 4: Notificando cambios al Explorador...");
-    if (executeCommand("rundll32.exe",
-            QStringList() << "shell32.dll,SHChangeNotify" << "0x08000000,0x0000,0,0")) {
-        Logger::logInfo("PASO 4 COMPLETADO");
-    } else {
-        Logger::logError("PASO 4 FALLÓ");
-    }
-
-    Logger::logInfo("=== COMANDOS DE REGISTRO COMPLETADOS ===");
-
-    // Los errores se DEVUELVEN, no se muestran: el cartel lo arma quien llama, que es el
-    // unico que sabe si ademas hay algo mas que decir.
-    return errors;
-}
-
-bool ConfigWindow::cleanRegistry()
-{
-    Logger::logInfo("Iniciando limpieza del registro...");
-    
-    // Lista de claves a eliminar
-    QStringList keysToDelete = {
-        "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.nk\\UserChoice",
-        "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.nk",
-        "HKEY_CURRENT_USER\\Software\\Classes\\.nk",
-        "HKEY_CURRENT_USER\\Software\\Classes\\NukeScript",
-        "HKEY_CURRENT_USER\\Software\\Classes\\nuke_auto_file",
-        "HKEY_CURRENT_USER\\Software\\Classes\\Foundry.Nuke.Script",
-        "HKEY_CURRENT_USER\\Software\\Classes\\LGA.NukeScript",
-        "HKEY_CURRENT_USER\\Software\\Classes\\LGA.NukeScript.1",
-        "HKEY_CURRENT_USER\\Software\\Classes\\Applications\\LGA_OpenInNukeX.exe",
-        "HKEY_CURRENT_USER\\Software\\Classes\\Applications\\Nuke15.0.exe"
-    };
-    
-    Logger::logInfo(QString("Ejecutando %1 comandos de limpieza...").arg(keysToDelete.size()));
-    
-    bool allSuccess = true;
-    int successCount = 0;
-    
-    for (const QString& key : keysToDelete) {
-        QStringList args;
-        args << "delete" << key << "/f";
-        
-        if (executeCommand("reg", args)) {
-            successCount++;
-        } else {
-            allSuccess = false;
-        }
-    }
-    
-    Logger::logInfo(QString("Limpieza completada: %1/%2 comandos exitosos").arg(successCount).arg(keysToDelete.size()));
-    return allSuccess;
-}
-
-bool ConfigWindow::registerProgId()
-{
-    Logger::logInfo("Iniciando registro de ProgID...");
-    
-    QString progId = "LGA.NukeScript.1";
-    QString exePath = QCoreApplication::applicationFilePath();
-    QString iconPath = QDir(QCoreApplication::applicationDirPath()).filePath("app_icon.ico");
-    
-    Logger::logInfo(QString("ProgID: %1").arg(progId));
-    Logger::logInfo(QString("Ejecutable: %1").arg(exePath));
-    Logger::logInfo(QString("Icono: %1").arg(iconPath));
-    
-    QString escapedExePath = exePath;
-    escapedExePath.replace("/", "\\");
-    
-    bool allSuccess = true;
-    int successCount = 0;
-    int totalCommands = 0;
-    
-    // 1. Registrar ProgID principal
-    {
-        QStringList args;
-        args << "add" << QString("HKEY_CURRENT_USER\\Software\\Classes\\%1").arg(progId) 
-             << "/ve" << "/t" << "REG_SZ" << "/d" << "Nuke Script File" << "/f";
-        totalCommands++;
-        if (executeCommand("reg", args)) {
-            successCount++;
-        } else {
-            allSuccess = false;
-        }
-    }
-    
-    // 2. Registrar comando de apertura
-    {
-        QStringList args;
-        args << "add" << QString("HKEY_CURRENT_USER\\Software\\Classes\\%1\\shell\\open\\command").arg(progId)
-             << "/ve" << "/t" << "REG_SZ" << "/d" << QString("\"%1\" \"%2\"").arg(escapedExePath, "%1") << "/f";
-        totalCommands++;
-        if (executeCommand("reg", args)) {
-            successCount++;
-        } else {
-            allSuccess = false;
-        }
-    }
-    
-    // 3. Registrar icono si existe
-    if (QFile::exists(iconPath)) {
-        Logger::logInfo("Icono encontrado, registrándolo...");
-        QString escapedIconPath = iconPath;
-        escapedIconPath.replace("/", "\\");
-        
-        QStringList args;
-        args << "add" << QString("HKEY_CURRENT_USER\\Software\\Classes\\%1\\DefaultIcon").arg(progId)
-             << "/ve" << "/t" << "REG_SZ" << "/d" << QString("\"%1\",0").arg(escapedIconPath) << "/f";
-        totalCommands++;
-        if (executeCommand("reg", args)) {
-            successCount++;
-        } else {
-            allSuccess = false;
-        }
-    } else {
-        Logger::logInfo("Icono no encontrado, omitiendo registro de icono");
-    }
-    
-    Logger::logInfo(QString("Registro de ProgID completado: %1/%2 comandos exitosos").arg(successCount).arg(totalCommands));
-    return allSuccess;
-}
-
-bool ConfigWindow::setFileAssociation()
-{
-    Logger::logInfo("Iniciando configuración de asociación de archivos...");
-    
-    QString progId = "LGA.NukeScript.1";
-    QString setUserFtaPath = QDir(QCoreApplication::applicationDirPath()).filePath("SetUserFTA.exe");
-    
-    Logger::logInfo(QString("Buscando SetUserFTA en: %1").arg(setUserFtaPath));
-    
-    if (!QFile::exists(setUserFtaPath)) {
-        Logger::logInfo("ERROR: SetUserFTA.exe no encontrado; la asociacion de .nk no puede completarse sin este archivo");
-        return false;
-    }
-
-    Logger::logInfo("SetUserFTA encontrado, usándolo para la asociación");
-    bool result = executeCommand(setUserFtaPath, QStringList() << ".nk" << progId);
-    Logger::logInfo(QString("SetUserFTA resultado: %1").arg(result ? "exitoso" : "falló"));
-    return result;
+    const WinFileAssociation::ApplyOutcome outcome = WinFileAssociation::apply();
+    return outcome.errors;
 }
 
 #endif // Q_OS_WIN

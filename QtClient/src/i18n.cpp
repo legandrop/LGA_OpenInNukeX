@@ -120,6 +120,11 @@ constexpr std::array<Row, static_cast<size_t>(I18n::Str::Count_)> kTable = {{
      "as soon as that folder is rebuilt. Run the installed copy of OpenInNukeX instead.",
      "Esta copia corre desde una carpeta de compilacion, asi que asociarle los .nk se rompe en "
      "cuanto esa carpeta se regenere. Abri la copia instalada de OpenInNukeX y hacelo desde ahi."},
+    {"One more step in Windows", "Un paso mas en Windows"},
+    {"OpenInNukeX is registered. Choose it as the app for <b>.nk</b> files in the Windows "
+     "dialog or in <b>Default apps</b>, then try a .nk file.",
+     "OpenInNukeX ya quedo registrada. Elegila como app para archivos <b>.nk</b> en el cartel de "
+     "Windows o en <b>Apps predeterminadas</b>, y despues proba un .nk."},
 }};
 
 static_assert(kTable.size() == static_cast<size_t>(I18n::Str::Count_),

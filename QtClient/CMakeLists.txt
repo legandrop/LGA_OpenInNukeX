@@ -90,6 +90,8 @@ set(SOURCES
     src/dialogbutton.cpp
     src/dialogbutton.h
     src/dialogstyle.h
+    src/winfileassociation.cpp
+    src/winfileassociation.h
 )
 
 # El `.mm` solo entra en macOS: es Objective-C++ y adentro hay AppKit.
@@ -145,7 +147,7 @@ if(WIN32)
     )
     target_sources(LGA_OpenInNukeX PRIVATE LGA_OpenInNukeX.rc)
     enable_language(RC)
-    target_link_libraries(LGA_OpenInNukeX shell32 dwmapi)
+    target_link_libraries(LGA_OpenInNukeX shell32 dwmapi ole32 crypt32)
 
     # El payload del bridge va en `bridge/` al lado del .exe, que es donde lo busca
     # NukeBridge::payloadDirectory().

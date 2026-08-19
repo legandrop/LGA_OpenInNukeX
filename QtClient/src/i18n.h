@@ -97,6 +97,8 @@ enum class Str {
     MsgAssocAlmost,
     TitleAssocWarnings,
     MsgAssocDevTree,
+    TitleAssocWindowsConfirm,
+    MsgAssocWindowsConfirm,
 
     Count_,
 };

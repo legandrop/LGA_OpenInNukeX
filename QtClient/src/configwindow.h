@@ -19,6 +19,9 @@
 #include "i18n.h"
 #include "logger.h"
 #include "nukescanner.h"
+#ifdef Q_OS_WIN
+#include "winfileassociation.h"
+#endif
 
 class QFlowLayout;
 class QShowEvent;
@@ -107,9 +110,6 @@ private:
     /// Devuelve la lista de pasos que fallaron (vacia si salio todo bien). No muestra
     /// ningun cartel: eso lo hace el llamador, para que salga UNO solo.
     QStringList executeRegistryCommands();
-    bool cleanRegistry();
-    bool registerProgId();
-    bool setFileAssociation();
 #else
     void executeMacAssociation();
     QString getAppBundlePath() const;
