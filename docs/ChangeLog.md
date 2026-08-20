@@ -1,3 +1,8 @@
+v1.82: 
+
+    - APPLY en Windows vuelve a dejar operativo el doble clic en `.nk` en Windows 11 con `UserChoiceLatest` activo: el modulo nativo invoca `LGA_WinSetFTA.exe` (hash `UserChoiceLatest` + registro `Software\Classes\.nk`) y deja de confiar solo en `UserChoice` legacy, que el sistema ignora cuando `HashVersion=1`. El helper se compila desde `tools/win_file_assoc/` y se copia junto al ejecutable en build y deploy. [ OpenInNukeX - Asociacion .nk con LGA_WinSetFTA en Windows 11 ]
+
+
 v1.81: 
 
     - MinGW ignoraba `__declspec(uuid)` en `IOpenWithLauncher` con warning en cada build; el IID ya se pasaba a mano en `CoCreateInstance`, asi que el atributo era redundante y se saco. `bump_version.bat` deja de ser alias mudo de `sync_version`: al terminar el bump pregunta si commitear (`Version - Bump a vX.YY`) y si correr `QtClient/instalador.bat`, igual que FileManagerS3. `sync_version.bat` sigue sin prompts para los scripts de release. [ OpenInNukeX - Warning MinGW y bump_version interactivo ]

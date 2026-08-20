@@ -1,7 +1,7 @@
 <p>
   <img src="Doc_Media/image1.png" alt="LGA OpenInNukeX logo" width="56" height="56" align="left" style="margin-right:8px;">
   <span style="font-size:1.6em;font-weight:700;line-height:1;">LGA OPENINNUKEX</span><br>
-  <span style="font-style:italic;line-height:1;">Lega | v1.81</span><br>
+  <span style="font-style:italic;line-height:1;">Lega | v1.82</span><br>
 </p>
 <br clear="left">
 
@@ -65,8 +65,8 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 ## Configuración
 
 - El botón **APPLY** asocia los archivos `.nk` con OpenInNukeX. Después de aplicarlo, hacer doble clic en cualquier `.nk` desde el Explorer o Finder lo abrirá a través de esta app.
-  - En **Windows** se usa la app `SetUserFTA.exe` que viene incluida en el paquete.
-  - En **macOS** se registra con Launch Services y usa `duti` si está instalado (`brew install duti`). Si no, la app indica el flujo manual en Finder: clic derecho en un `.nk` → Obtener información → Abrir con → Cambiar todo.
+  - En **Windows** se invoca `LGA_WinSetFTA.exe` (incluido en el paquete; requiere .NET 9 runtime).
+  - En **macOS** se usa la API de Launch Services; macOS muestra un cartel de confirmación del sistema.
 
 - La sección **Preferred Nuke Version** escanea automáticamente las rutas comunes del sistema al abrirse y muestra un botón por cada versión de Nuke detectada. Al hacer clic en uno de esos botones la ruta se carga en el campo de texto. Si la instalación de Nuke está en una ubicación no estándar, se puede usar **BROWSE** para localizarla manualmente.
   - En **Windows** escanea `C:\Program Files` y `C:\Program Files (x86)`.

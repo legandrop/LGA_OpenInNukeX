@@ -43,6 +43,7 @@ exit /b 1
 :args_done
 
 for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
+for %%I in ("%~dp0..") do set "REPO_ROOT=%%~fI"
 set "BUILD_DIR=%QTCLIENT_DIR%\build-release"
 set "RELEASE_DIR=%QTCLIENT_DIR%\release"
 set "DEPLOY_DIR=%RELEASE_DIR%\deploy"
@@ -76,9 +77,8 @@ if errorlevel 1 exit /b 1
 REM Refrescar los recursos propios por si se tocaron despues del build.
 copy /Y "%QTCLIENT_DIR%\dark_theme.qss" "%DEPLOY_DIR%\" >nul
 copy /Y "%QTCLIENT_DIR%\resources\app_icon.ico" "%DEPLOY_DIR%\" >nul
-if exist "%QTCLIENT_DIR%\resources\SetUserFTA.exe" (
-    copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%DEPLOY_DIR%\" >nul
-)
+call "%REPO_ROOT%\tools\win_file_assoc\build_win_setfta.bat" "%DEPLOY_DIR%"
+if errorlevel 1 exit /b 1
 
 REM Sacar del deploy lo que es del arbol de build y no del producto. La lista tiene que
 REM cubrir TODO lo que genera Ninja/CMake: lo que quede aca se lo lleva despues Inno Setup

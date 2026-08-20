@@ -64,6 +64,7 @@ exit /b 1
 
 :main
 for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
+for %%I in ("%~dp0..") do set "REPO_ROOT=%%~fI"
 set "BUILD_DIR=%QTCLIENT_DIR%\%BUILD_SUBDIR%"
 set "QT_DIR=C:\Qt\6.5.3\mingw_64"
 set "MINGW_DIR=C:\Qt\Tools\mingw1310_64"
@@ -144,9 +145,8 @@ if errorlevel 1 exit /b 1
 
 copy /Y "%QTCLIENT_DIR%\dark_theme.qss" "%BUILD_DIR%\dark_theme.qss" >nul
 copy /Y "%QTCLIENT_DIR%\resources\app_icon.ico" "%BUILD_DIR%\app_icon.ico" >nul
-if exist "%QTCLIENT_DIR%\resources\SetUserFTA.exe" (
-    copy /Y "%QTCLIENT_DIR%\resources\SetUserFTA.exe" "%BUILD_DIR%\SetUserFTA.exe" >nul
-)
+call "%REPO_ROOT%\tools\win_file_assoc\build_win_setfta.bat" "%BUILD_DIR%"
+if errorlevel 1 exit /b 1
 
 if /I "%NO_DEPLOY%"=="true" goto verify
 

@@ -11,11 +11,11 @@
 
 Si después de usar el botón **APPLY** los archivos .nk siguen sin abrirse correctamente:
 
-#### 1. Verificar SetUserFTA.exe
+#### 1. Verificar LGA_WinSetFTA.exe
 
-- Asegúrate de que `SetUserFTA.exe` esté en la misma carpeta que `LGA_OpenInNukeX.exe`
-- Si no está, descárgalo desde: https://kolbi.cz/blog/2017/10/25/setuserfta-userchoice-hash-defeated-set-file-type-associations-per-user/
-- Colócalo en la carpeta `release/deploy/`
+- Asegúrate de que `LGA_WinSetFTA.exe`, `LGA_WinSetFTA.dll`, `LGA_WinSetFTA.runtimeconfig.json` y `LookUpLut4.bin` estén en la misma carpeta que `LGA_OpenInNukeX.exe`
+- El paquete de build/deploy los genera automáticamente desde `tools/win_file_assoc/`
+- Requiere **.NET 9 runtime** instalado en el sistema (build framework-dependent)
 
 #### 2. Limpiar asociaciones previas
 
@@ -26,42 +26,34 @@ scripts\limpiar_registro.bat
 
 Este script elimina todas las asociaciones previas de archivos .nk que puedan estar causando conflictos.
 
-#### 3. Ejecutar como administrador
+#### 3. Reiniciar el Explorador de Windows
 
-1. Cierra LGA_OpenInNukeX si está abierto
-2. Haz clic derecho en `LGA_OpenInNukeX.exe`
-3. Selecciona "Ejecutar como administrador"
-4. Usa el botón **APPLY** nuevamente
-
-#### 4. Reiniciar el Explorador de Windows
-
-Si aún no funciona:
+Si APPLY muestra éxito pero el doble clic no cambia:
 1. Presiona `Ctrl + Shift + Esc` para abrir el Administrador de tareas
 2. Busca "Explorador de Windows" o "Windows Explorer"
 3. Haz clic derecho y selecciona "Reiniciar"
 
-#### 5. Verificación manual
+#### 4. Verificación manual
 
 1. Haz clic derecho en un archivo .nk
 2. Selecciona "Abrir con" > "Elegir otra aplicación"
 3. Busca "LGA_OpenInNukeX" en la lista
 4. Marca "Usar siempre esta aplicación para abrir archivos .nk"
 
-#### 6. Solución de último recurso
+#### 5. Solución de último recurso
 
 1. Reinicia completamente Windows
 2. Ejecuta `limpiar_registro.bat`
-3. Ejecuta `LGA_OpenInNukeX.exe` como administrador
-4. Usa el botón **APPLY**
+3. Abre `LGA_OpenInNukeX.exe` y usa el botón **APPLY**
 
-### ¿Por qué es necesario SetUserFTA?
+### ¿Por qué es necesario LGA_WinSetFTA?
 
-Windows 10/11 tiene protecciones que detectan cuando una aplicación intenta cambiar asociaciones de archivos sin pasar por el sistema oficial ("UserChoice Protection"). SetUserFTA genera el hash de validación correcto que Windows espera, evitando que detecte la asociación como "hijacking".
+En Windows 11 con `HashVersion=1`, el sistema usa **`UserChoiceLatest`** e ignora el `UserChoice` legacy. Escribir solo el hash antiguo hace que la UI muestre la app como predeterminada pero el doble clic siga abriendo otra aplicación. `LGA_WinSetFTA` calcula el hash correcto para `UserChoiceLatest` y registra `Software\Classes\.nk` con el ProgID de OpenInNukeX.
 
 ### Archivos importantes (Windows)
 
 - `LGA_OpenInNukeX.exe` — Aplicación principal
-- `SetUserFTA.exe` — Herramienta requerida para asociaciones funcionales en Windows
+- `LGA_WinSetFTA.exe` (+ `.dll`, `.runtimeconfig.json`, `LookUpLut4.bin`) — Helper para asociaciones en Windows 11
 - `app_icon.ico` — Icono de la aplicación
 - `scripts\limpiar_registro.bat` — Script de limpieza
 
@@ -139,6 +131,8 @@ Esto puede ocurrir si la app no recibe el `QFileOpenEvent` de macOS a tiempo. Ve
 
 | Archivo | Funciones relevantes |
 |---------|---------------------|
-| `src/configwindow.cpp` | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()` |
-| `src/main.cpp` | `NukeApp::event()` (QFileOpenEvent), timer 200ms macOS |
-| `src/logger.cpp` | `logInfo()`, `logError()` |
+| `QtClient/src/winfileassociation.cpp` | `apply()`, `invokeSetFtaHelper()`, `registerExtensionClass()`, `currentNkProgId()`, `isUserChoiceLatestActive()` |
+| `tools/win_file_assoc/Program.cs` | CLI del helper `LGA_WinSetFTA` |
+| `QtClient/src/configwindow.cpp` | `applyFileAssociation()`, `executeMacAssociation()` |
+| `QtClient/src/main.cpp` | `NukeApp::event()` (QFileOpenEvent), timer 200ms macOS |
+| `QtClient/src/logger.cpp` | `logInfo()`, `logError()` |

@@ -351,7 +351,7 @@ void ConfigWindow::setupUI()
 
     applyButton = new QPushButton(TR(BtnApply), fileAssociationGroup);
     applyButton->setFixedHeight(40);
-    applyButton->setMinimumWidth(100);
+    applyButton->setMinimumWidth(158);
     applyButton->setProperty("class", "action");
 
     fileAssociationBody->addWidget(descriptionLabel, 1);

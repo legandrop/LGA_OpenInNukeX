@@ -10,7 +10,7 @@ Cliente Qt/C++ multiplataforma para abrir archivos .nk en NukeX. Disponible para
 - **Multiplataforma**: mismo codebase para Windows y macOS con `#ifdef Q_OS_WIN` guards
 - **Sin ventana de consola**: aplicación GUI pura en ambas plataformas
 - **Apertura inteligente**: si NukeX está corriendo envía el archivo vía TCP; si no, lanza nueva instancia
-- **Asociación de archivos**: Windows requiere `SetUserFTA.exe` para dejar operativa la asociación `.nk`; macOS la resuelve con `lsregister` + la API de Launch Services, sin herramientas externas
+- **Asociación de archivos**: Windows usa `LGA_WinSetFTA.exe` (helper .NET 9) para escribir `UserChoiceLatest` en Windows 11; macOS la resuelve con Launch Services, sin herramientas externas
 - **Configuración en AppData/Application Support**: archivos de configuración y logs en ubicación estándar del sistema
 - **Conexión TCP async**: conecta al servidor NukeX en puerto 54325 con timeout; sin bloqueos (`readyRead` signal)
 - **Fallback automático**: si no hay instancia activa de NukeX, lanza el ejecutable configurado con `--nukex`
@@ -112,8 +112,8 @@ despues lo purga del target.
 
 ### Windows
 - Registra ProgID `LGA.NukeScript.1` en `HKCU\Software\Classes`
-- Requiere `SetUserFTA.exe` para aplicar la asociación `.nk` evitando UserChoice Protection de Windows 10/11
-- Si `SetUserFTA.exe` falta, la asociación no debe considerarse funcionalmente completa
+- Requiere `LGA_WinSetFTA.exe` (y `LookUpLut4.bin` al lado) para aplicar la asociación `.nk` con hash `UserChoiceLatest` en Windows 11
+- Si el helper falta, APPLY puede mostrar éxito parcial pero el doble clic no cambiará en sistemas con `HashVersion=1`
 - Llama `SHChangeNotify()` para actualizar el explorador inmediatamente
 
 ### macOS

@@ -44,7 +44,10 @@ Este documento detalla todos los cambios realizados para que **LGA_OpenInNukeX**
 ```
 %LocalAppData%\Programs\LGA\OpenInNukeX\   # O ubicación personalizada
 ├── LGA_OpenInNukeX.exe
-├── SetUserFTA.exe                          # Opcional
+├── LGA_WinSetFTA.exe                       # Helper asociaciones Windows 11
+├── LGA_WinSetFTA.dll
+├── LGA_WinSetFTA.runtimeconfig.json
+├── LookUpLut4.bin
 ├── app_icon.ico
 ├── Qt6*.dll
 └── ...
@@ -55,7 +58,7 @@ Este documento detalla todos los cambios realizados para que **LGA_OpenInNukeX**
 ### Asociaciones de Archivos (Solo HKEY_CURRENT_USER)
 - **Limpieza**: Elimina asociaciones conflictivas previas
 - **ProgID**: Registra `LGA.NukeScript.1` en `HKCU\Software\Classes`
-- **Asociación**: Usa SetUserFTA (sin admin) o PowerShell como fallback
+- **Asociación**: Usa `LGA_WinSetFTA` (sin admin) para `UserChoiceLatest`; fallback a hash legacy si el sistema no lo exige
 - **Notificación**: Llama `SHChangeNotify()` para actualizar el Explorador
 
 ## ✅ Beneficios Obtenidos
@@ -63,7 +66,7 @@ Este documento detalla todos los cambios realizados para que **LGA_OpenInNukeX**
 1. **✓ Sin UAC**: La aplicación se ejecuta directamente sin solicitar permisos
 2. **✓ Sin Admin en Instalación**: El instalador funciona con permisos de usuario estándar
 3. **✓ Logs Seguros**: Se escriben en AppData, siempre accesible
-4. **✓ Asociaciones Robustas**: SetUserFTA maneja asociaciones sin elevar permisos
+4. **✓ Asociaciones Robustas**: `LGA_WinSetFTA` maneja asociaciones sin elevar permisos
 5. **✓ Compatibilidad Total**: Funciona en cuentas de usuario limitadas
 6. **✓ Sin Antivirus**: Reduce falsos positivos al no solicitar permisos elevados
 
@@ -95,10 +98,10 @@ Este documento detalla todos los cambios realizados para que **LGA_OpenInNukeX**
 - ✅ Aplicación ejecuta con permisos de usuario estándar
 - ✅ Instalador no requiere UAC
 - ✅ Logs se escriben en ubicación segura (AppData)
-- ✅ Asociaciones de archivos funcionan con SetUserFTA
+- ✅ Asociaciones de archivos funcionan con `LGA_WinSetFTA`
 - ✅ Compatible con entornos corporativos restringidos
 - ✅ Menos falsos positivos de antivirus
 
 ---
 
-**Nota**: SetUserFTA es una herramienta de terceros que permite establecer asociaciones de archivos por usuario sin requerir permisos de administrador. Es la solución recomendada por Microsoft para este tipo de operaciones. 
+**Nota**: `LGA_WinSetFTA` es un helper propio (derivado de PS-SFTA/DefaultApps, MIT) que escribe `UserChoiceLatest` por usuario sin permisos de administrador.

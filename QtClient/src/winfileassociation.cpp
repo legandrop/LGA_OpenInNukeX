@@ -9,6 +9,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QProcess>
 #include <QThread>
 #include <objbase.h>
 #include <sddl.h>
@@ -397,6 +398,48 @@ bool registerProgId()
     return ok;
 }
 
+bool registerExtensionClass(const QString &extension, const QString &progId)
+{
+    return writeString(HKEY_CURRENT_USER,
+                      QStringLiteral("Software\\Classes\\%1").arg(extension),
+                      QString(),
+                      progId);
+}
+
+bool invokeSetFtaHelper(const QString &extension, const QString &progId)
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString helperPath = QDir(appDir).filePath(QStringLiteral("LGA_WinSetFTA.exe"));
+    if (!QFile::exists(helperPath)) {
+        Logger::logError(QString("WinAssoc: no se encontro LGA_WinSetFTA.exe en %1").arg(appDir));
+        return false;
+    }
+
+    QProcess process;
+    process.setProgram(helperPath);
+    process.setArguments({extension, progId});
+    process.setWorkingDirectory(appDir);
+    process.setProcessChannelMode(QProcess::MergedChannels);
+    process.start();
+    if (!process.waitForStarted(5000)) {
+        Logger::logError("WinAssoc: no se pudo iniciar LGA_WinSetFTA");
+        return false;
+    }
+    if (!process.waitForFinished(60000)) {
+        process.kill();
+        Logger::logError("WinAssoc: LGA_WinSetFTA expiro");
+        return false;
+    }
+    if (process.exitCode() != 0) {
+        Logger::logError(QString("WinAssoc: LGA_WinSetFTA fallo (%1): %2")
+                             .arg(process.exitCode())
+                             .arg(QString::fromUtf8(process.readAllStandardOutput())));
+        return false;
+    }
+    Logger::logInfo(QString("WinAssoc: LGA_WinSetFTA OK para %1 -> %2").arg(extension, progId));
+    return true;
+}
+
 bool registerDefaultAppCapabilities()
 {
     const QString exePath =
@@ -479,9 +522,13 @@ QString currentNkProgId()
     const QString latestPath = QStringLiteral(
         "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.nk\\UserChoiceLatest\\"
         "ProgId");
-    QString progId = readProgIdFromKey(latestPath);
-    if (!progId.isEmpty())
-        return progId;
+    const QString latestProgId = readProgIdFromKey(latestPath);
+
+    if (isUserChoiceLatestActive())
+        return latestProgId;
+
+    if (!latestProgId.isEmpty())
+        return latestProgId;
 
     const QString legacyPath = QStringLiteral(
         "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.nk\\UserChoice");
@@ -521,14 +568,29 @@ ApplyOutcome apply(HWND parentHwnd)
     Logger::logInfo(QString("WinAssoc: UserChoiceLatest %1")
                         .arg(latestActive ? QStringLiteral("activo") : QStringLiteral("inactivo")));
 
-    if (!latestActive) {
-        if (!writeLegacyUserChoice(extension, progId))
+    if (!registerExtensionClass(extension, progId)) {
+        outcome.errors << QStringLiteral("Error al registrar la extension");
+        Logger::logError("WinAssoc: registro de extension fallo");
+    }
+
+    bool associationWritten = false;
+    if (invokeSetFtaHelper(extension, progId)) {
+        associationWritten = true;
+    } else if (!latestActive) {
+        if (writeLegacyUserChoice(extension, progId)) {
+            associationWritten = true;
+        } else {
             outcome.errors << QStringLiteral("Error al escribir UserChoice");
+        }
+    } else {
+        outcome.errors << QStringLiteral(
+            "No se pudo escribir UserChoiceLatest (falta LGA_WinSetFTA.exe)");
+        Logger::logError("WinAssoc: UserChoiceLatest activo pero falta el helper");
     }
 
     notifyAssociationChanged();
 
-    if (isNkAssociatedWithUs()) {
+    if (associationWritten && isNkAssociatedWithUs()) {
         outcome.result = ApplyResult::Success;
         Logger::logInfo("WinAssoc: asociacion verificada");
         return outcome;
