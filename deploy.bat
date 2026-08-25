@@ -42,8 +42,11 @@ echo Uso: %~nx0 [--no-run] [--parallel N]
 exit /b 1
 :args_done
 
-for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
-for %%I in ("%~dp0..") do set "REPO_ROOT=%%~fI"
+REM Parado siempre en la raiz del repo: el script vive ahi, pero CMakeLists.txt,
+REM los arboles build*/ y los recursos del cliente Qt siguen en QtClient\.
+cd /d "%~dp0"
+for %%I in ("%~dp0.") do set "REPO_ROOT=%%~fI"
+set "QTCLIENT_DIR=%REPO_ROOT%\QtClient"
 set "BUILD_DIR=%QTCLIENT_DIR%\build-release"
 set "RELEASE_DIR=%QTCLIENT_DIR%\release"
 set "DEPLOY_DIR=%RELEASE_DIR%\deploy"
@@ -52,7 +55,9 @@ set "MINGW_DIR=C:\Qt\Tools\mingw1310_64"
 
 REM --release y NO el build de desarrollo: lo que se publica tiene que ir optimizado y sin
 REM asserts. Y SIN --no-deploy: el bundle de deploy tiene que pasar por windeployqt.
-call "%~dp0compilar_dev.bat" --release --no-run %PARALLEL_ARGS%
+REM Llama directo al motor y no a compilar_release.bat: ya necesita el motor con flags
+REM propios (--no-run) y pasar por un wrapper intermedio no suma nada.
+call "%~dp0compilar.bat" --release --no-run %PARALLEL_ARGS%
 if errorlevel 1 exit /b 1
 
 if not exist "%BUILD_DIR%\LGA_OpenInNukeX.exe" (

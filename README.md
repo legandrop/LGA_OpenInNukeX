@@ -80,19 +80,20 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 **Windows**
 
 ```bat
-cd QtClient
-compilar_dev.bat # Debug incremental, despliega DLLs y ejecuta la app
-deploy.bat       # Release + paquete portable en release\deploy
-instalador.bat   # Regenera Release y crea el instalador con Inno Setup
+compilar.bat          # Debug incremental, despliega DLLs y ejecuta la app
+deploy.bat            # Release + paquete portable en QtClient\release\deploy
+instalador.bat        # Regenera Release y crea el instalador con Inno Setup
 ```
 
 **macOS**
 
 ```bash
-cd QtClient
-./compilar_dev.sh   # Build rápido (Debug) para desarrollo y pruebas
-./deploy.sh         # Build Release, genera el .app distribuible
+./compilar.sh   # Build rápido (Debug) para desarrollo y pruebas
+./deploy.sh     # Build Release, genera el .app distribuible
 ```
+
+Los scripts de build viven en la raíz del repo (no en `QtClient/`); `QtClient/`
+sigue teniendo el `CMakeLists.txt` y los árboles de build.
 
 <br><br>
 

@@ -104,8 +104,8 @@ Hay **dos** productores por plataforma, y los dos tienen que dar el mismo artefa
 
 | | Arma el zip | Publica |
 |---|---|---|
-| macOS | `QtClient/deploy.sh --zip` | `QtClient/github_release_mac.sh`, que `deploy.sh` ofrece al final |
-| Windows | `QtClient/github_release_win.bat` | el mismo script, que `instalador.bat` ofrece al final |
+| macOS | `deploy.sh --zip` (raiz del repo) | `github_release_mac.sh`, que `deploy.sh` ofrece al final |
+| Windows | `github_release_win.bat` (raiz del repo) | el mismo script, que `instalador.bat` ofrece al final |
 | ambas | `LGA_Release/_LGA_ReleaseGen-OpenInNukeX.{bat,sh}` | el mismo generador |
 
 El generador del repo de release hace además el bump de versión, el commit y el tag; los

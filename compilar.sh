@@ -3,6 +3,12 @@
 # Compilacion rapida para desarrollo - solo recompila archivos modificados
 set -uo pipefail
 
+# El script vive en la raiz del repo, pero CMakeLists.txt y los arboles build*/
+# siguen en QtClient/: todo el resto de este archivo asume cwd=QtClient (rutas
+# relativas build/, build-release/, cmake .., etc.), asi que hay que pararse ahi
+# ANTES de tocar nada, sin importar desde donde se haya invocado el script.
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/QtClient" && pwd)"
+
 show_help() {
     echo "Uso: $0 [--release] [--force-clean] [--parallel N] [--no-deploy] [--no-run] [--wait] [--sim-slow] [--rosetta]"
     echo ""
@@ -181,7 +187,7 @@ fi
 
 # Verificar dependencia critica
 if [ ! -f "$APP_BUNDLE/Contents/PlugIns/platforms/libqcocoa.dylib" ]; then
-    echo "❌ Plugin Cocoa faltante. Ejecuta sin --no-deploy o ejecuta compilar.sh completo."
+    echo "❌ Plugin Cocoa faltante. Volve a correr este script sin --no-deploy."
     exit 1
 fi
 

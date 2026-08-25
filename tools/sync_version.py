@@ -20,7 +20,9 @@ INIT_FILE = ROOT_DIR / "init.py"
 RC_FILE = QT_DIR / "LGA_OpenInNukeX.rc"
 MANIFEST_FILE = QT_DIR / "LGA_OpenInNukeX.exe.manifest"
 INSTALLER_FILE = QT_DIR / "installer.iss"
-INSTALLER_BAT = QT_DIR / "instalador.bat"
+# instalador.bat vive en la raiz del repo (junto a deploy.bat/compilar.bat), no en QtClient/:
+# solo installer.iss y los arboles de build siguen ahi.
+INSTALLER_BAT = ROOT_DIR / "instalador.bat"
 
 EXPECTED_GIT_EMAIL = "176236735+legandrop@users.noreply.github.com"
 
@@ -238,7 +240,7 @@ def _maybe_commit(version: str, *, mode: str) -> bool:
 
 
 def _maybe_run_installer(*, mode: str) -> None:
-    """Ofrece correr `QtClient/instalador.bat` despues del commit. `mode`: ask | yes | no."""
+    """Ofrece correr `instalador.bat` (raiz del repo) despues del commit. `mode`: ask | yes | no."""
     if mode == "no":
         return
 
@@ -256,7 +258,7 @@ def _maybe_run_installer(*, mode: str) -> None:
         return
 
     print(f"\nEjecutando {INSTALLER_BAT.name}...\n")
-    result = subprocess.run(["cmd", "/c", str(INSTALLER_BAT)], cwd=QT_DIR, check=False)
+    result = subprocess.run(["cmd", "/c", str(INSTALLER_BAT)], cwd=ROOT_DIR, check=False)
     if result.returncode != 0:
         print(f"El instalador termino con codigo {result.returncode}.")
 

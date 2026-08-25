@@ -24,12 +24,15 @@ set -euo pipefail
 # PipeSync ya tiene declarado para esta app.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$SCRIPT_DIR"
+# El script vive en la raiz del repo, pero CMakeLists.txt, los arboles build*/ y
+# deploy/ siguen en QtClient/: nos paramos ahi para que el resto de este archivo
+# -que asume cwd=QtClient en sus rutas relativas- no tenga que cambiar.
+cd "$REPO_ROOT/QtClient"
 
 APP_NAME="LGA OpenInNukeX"
 ARTIFACT_NAME="LGA_OpenInNukeX"
 PLUGIN_FOLDER="LGA_OpenInNukeX"
-REPO_ROOT="$(cd .. && pwd)"
 
 show_help() {
     echo "Uso: $0 [--zip] [--dmg] [--no-open-finder] [--parallel N]"
@@ -100,9 +103,12 @@ echo ""
 
 # --release y NO el build de desarrollo: lo que se publica tiene que ir optimizado y sin
 # asserts. Compila en build-release/, un arbol SEPARADO del de dev, asi deployar no invalida
-# la cache incremental con la que se venia trabajando (ni al reves).
+# la cache incremental con la que se venia trabajando (ni al reves). Llama directo al motor
+# y no a compilar_release.sh: ya necesita el motor con flags propios (--no-run) y pasar por
+# un wrapper intermedio no suma nada. Ruta absoluta via REPO_ROOT: compilar.sh vive en la
+# raiz junto a este script, no en QtClient/, que es donde estamos parados.
 BUILD_DIR="build-release"
-./compilar_dev.sh --release --no-run --parallel "$PARALLEL_CORES"
+"$REPO_ROOT/compilar.sh" --release --no-run --parallel "$PARALLEL_CORES"
 
 if [ ! -d "${BUILD_DIR}/${APP_NAME}.app" ]; then
     echo "ERROR: no se encontro ${BUILD_DIR}/${APP_NAME}.app"
@@ -287,7 +293,7 @@ elif [ "$CREATE_DMG_MODE" = "prompt" ] && [ -t 0 ]; then
     ask_yes_no "Crear el DMG de instalacion?" && CREATE_DMG=true
 fi
 if [ "$CREATE_DMG" = "true" ]; then
-    bash ./create_dmg.sh --no-open
+    bash "$REPO_ROOT/create_dmg.sh" --no-open
 fi
 
 # Publicacion en GitHub. Es el equivalente de la pregunta que hace instalador.bat en Windows:
@@ -312,7 +318,7 @@ if [ -t 0 ] && [ "${LGA_SKIP_RELEASE_PROMPT:-}" != "1" ] \
         #
         # El `||` no es opcional: bajo `set -e` un fallo de la publicacion mataria el script
         # y reportaria como fallido un deploy que salio bien. La publicacion es un extra.
-        if ! LGA_SKIP_RELEASE_PROMPT=1 bash ./github_release_mac.sh --use-existing-deploy; then
+        if ! LGA_SKIP_RELEASE_PROMPT=1 bash "$REPO_ROOT/github_release_mac.sh" --use-existing-deploy; then
             echo ""
             echo "AVISO: la publicacion en GitHub fallo. Los artefactos locales quedaron en deploy/."
         fi

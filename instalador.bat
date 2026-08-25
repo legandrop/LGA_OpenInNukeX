@@ -2,7 +2,11 @@
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
 
-for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
+REM Parado siempre en la raiz del repo: el script vive ahi, pero installer.iss,
+REM release\deploy\ e installer_output\ siguen dentro de QtClient\.
+cd /d "%~dp0"
+for %%I in ("%~dp0.") do set "REPO_ROOT=%%~fI"
+set "QTCLIENT_DIR=%REPO_ROOT%\QtClient"
 set "DEPLOY_DIR=%QTCLIENT_DIR%\release\deploy"
 set "ISS_FILE=%QTCLIENT_DIR%\installer.iss"
 set "OUTPUT_DIR=%QTCLIENT_DIR%\installer_output"
@@ -13,7 +17,7 @@ echo ================================================================
 echo.
 
 echo [INFO] Generando un deploy Release actualizado...
-call "%QTCLIENT_DIR%\deploy.bat" --no-run
+call "%REPO_ROOT%\deploy.bat" --no-run
 if errorlevel 1 (
     echo [ERROR] No se pudo generar el deploy Release.
     exit /b 1
@@ -124,7 +128,7 @@ if exist "%INSTALLER_FILE%" (
         REM volveria a preguntar si reusarlo y, por defecto, lo regeneraria.
         set /p "PUBLISH_RELEASE=Queres subir el release a GitHub? (y/n): "
         if /i "!PUBLISH_RELEASE!"=="y" (
-            call "%QTCLIENT_DIR%\github_release_win.bat" --use-existing-installer
+            call "%REPO_ROOT%\github_release_win.bat" --use-existing-installer
             if errorlevel 1 (
                 echo.
                 echo [ERROR] La publicacion en GitHub fallo. El instalador local quedo generado igual.

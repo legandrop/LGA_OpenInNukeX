@@ -24,8 +24,11 @@ REM  script NO bumpea ni commitea: publica lo que ya esta en main. Las dos
 REM  rutas producen el mismo asset con el mismo nombre.
 REM ============================================================================
 
-for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
-for %%I in ("%QTCLIENT_DIR%\..") do set "REPO_ROOT=%%~fI"
+REM Parado siempre en la raiz del repo: el script vive ahi, pero release\deploy\
+REM y installer_output\ siguen dentro de QtClient\.
+cd /d "%~dp0"
+for %%I in ("%~dp0.") do set "REPO_ROOT=%%~fI"
+set "QTCLIENT_DIR=%REPO_ROOT%\QtClient"
 for %%I in ("%REPO_ROOT%\..") do set "NUKE_DIR=%%~fI"
 
 set "ARTIFACT_NAME=LGA_OpenInNukeX"
@@ -39,7 +42,7 @@ if "%RELEASE_REPO%"=="" set "RELEASE_REPO=legandrop/LGA_OpenInNukeX"
 set "DEPLOY_DIR=%QTCLIENT_DIR%\release\deploy"
 set "OUTPUT_DIR=%QTCLIENT_DIR%\installer_output"
 set "SETUP_EXE=%OUTPUT_DIR%\LGA_OpenInNukeX_Setup.exe"
-set "INSTALLER_BAT=%QTCLIENT_DIR%\instalador.bat"
+set "INSTALLER_BAT=%REPO_ROOT%\instalador.bat"
 set "SYNC_VERSION_BAT=%REPO_ROOT%\sync_version.bat"
 set "NUKE_INSTALLER_DIR=%NUKE_DIR%\_LGA_Release\Installers\LGA_OpenInNukeX-Nuke"
 set "COMMON_INSTALLER_DIR=%NUKE_DIR%\_LGA_Release\Installers\Common"

@@ -21,7 +21,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# El script vive en la raiz del repo, pero deploy/, resources/dmg/ y
+# tools/macos/vendor siguen en QtClient/: el resto de este archivo asume
+# cwd=QtClient en sus rutas relativas, asi que nos paramos ahi. "../VERSION"
+# mas abajo sigue resolviendo a la raiz del repo porque el padre de QtClient/
+# es exactamente donde vive este script.
+cd "$SCRIPT_DIR/QtClient"
 
 # ---- Lo unico que cambia al derivar una app -------------------------------------------
 # Son TRES nombres y no uno solo, porque tienen consumidores distintos:
@@ -166,7 +171,7 @@ fi
 # Va vendorizado y no compartido por path relativo con las otras apps LGA: a ese peso, la
 # copia sale gratis, y un `../LGA_Base_QT_C_Py/tools/...` se rompe apenas alguien clona una
 # app sola. Al derivar una app se copia esta carpeta tal cual.
-VENDOR_DIR="$SCRIPT_DIR/tools/macos/vendor"
+VENDOR_DIR="$SCRIPT_DIR/QtClient/tools/macos/vendor"
 if [[ ! -d "$VENDOR_DIR/dmgbuild" ]]; then
     echo "ERROR: falta $VENDOR_DIR/dmgbuild."
     echo "Regeneralo con: tools/macos/refresh_dmg_vendor.sh"

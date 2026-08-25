@@ -1,7 +1,11 @@
 @echo off
 setlocal EnableExtensions
 
-for %%I in ("%~dp0.") do set "QTCLIENT_DIR=%%~fI"
+REM Parado siempre en la raiz del repo: el script vive ahi, pero todo lo que
+REM limpia (build/, release/, *.o, etc.) sigue dentro de QtClient\.
+cd /d "%~dp0"
+for %%I in ("%~dp0.") do set "REPO_ROOT=%%~fI"
+set "QTCLIENT_DIR=%REPO_ROOT%\QtClient"
 
 echo =================================
 echo     LIMPIANDO ARCHIVOS

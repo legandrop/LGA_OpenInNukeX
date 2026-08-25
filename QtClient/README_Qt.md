@@ -41,17 +41,22 @@ QtClient/
 │   └── dark_theme.qss           # Tema oscuro
 ├── cmake/
 │   └── Info.plist.in            # Bundle macOS (CFBundleDocumentTypes, UTI .nk)
-├── compilar_dev.bat             # Build Windows incremental + deploy + run
-├── compilar.bat                 # Wrapper compatible hacia compilar_dev.bat
+├── scripts/                     # Utilidades auxiliares Windows (asociacion .nk, no se mueven)
+└── CMakeLists.txt               # Configuración CMake multiplataforma
+
+<repo>/                          # Los entry-points de build viven en la RAIZ, no en QtClient/
+├── compilar.bat                 # Build Windows incremental + deploy + run (motor de desarrollo)
+├── compilar_release.bat         # Wrapper de dos lineas hacia compilar.bat --release (uso manual)
 ├── deploy.bat                   # Release portable Windows
 ├── limpiar.bat                  # Limpieza manual
 ├── instalador.bat               # Instalador Windows
-├── scripts/                     # Utilidades auxiliares Windows
-├── compilar.sh                  # Build macOS (macdeployqt)
-├── compilar_dev.sh              # Build dev macOS (Debug, rápido)
+├── github_release_win.bat       # Publicacion del release de Windows en GitHub
+├── compilar.sh                  # Build dev macOS (Debug, rápido)
+├── compilar_release.sh          # Wrapper de dos lineas hacia compilar.sh --release (uso manual)
 ├── deploy.sh                    # Release macOS
 ├── limpiar.sh                   # Limpieza de build
-└── CMakeLists.txt               # Configuración CMake multiplataforma
+├── create_dmg.sh                # DMG de primera instalacion (macOS)
+└── github_release_mac.sh        # Publicacion del release de macOS en GitHub
 ```
 
 ## Uso
@@ -78,30 +83,39 @@ Abre la ventana de configuración con:
 
 Requiere Qt 6.5.3, MinGW 13.1, Ninja, LLVM/lld y CMake.
 
+Los scripts se corren desde la RAIZ del repo (no desde `QtClient/`): se paran
+solos en `QtClient/` internamente para configurar CMake y copiar dependencias.
+
 ```bat
-cd QtClient
-compilar_dev.bat # Debug incremental, copia dependencias y lanza la app
-deploy.bat       # Release + deploy portable en release\deploy
-instalador.bat   # Regenera Release y crea el instalador con Inno Setup
+compilar.bat            # Debug incremental, copia dependencias y lanza la app
+compilar_release.bat    # Release manual, en el arbol build-release\ (forwardea a compilar.bat --release)
+deploy.bat              # Release + deploy portable en QtClient\release\deploy
+instalador.bat          # Regenera Release y crea el instalador con Inno Setup
 ```
 
-`compilar_dev.bat` conserva el cache de `build` y solo recompila los archivos
+`compilar.bat` conserva el cache de `build` y solo recompila los archivos
 modificados. `--force-clean` queda reservado para una limpieza explicita o para
 la migracion automatica desde un cache creado con otro generador/toolchain.
 `instalador.bat` ejecuta primero `deploy.bat --no-run`, por lo que nunca
-empaqueta accidentalmente un ejecutable Release anterior.
+empaqueta accidentalmente un ejecutable Release anterior. En las dos
+plataformas `compilar.*` ES el motor de desarrollo (Debug, `build/`); el de
+Release es explicito (`compilar_release.*`), y ni `deploy.bat` ni `deploy.sh`
+pasan por ese wrapper: llaman directo al motor con `--release --no-run`.
 
 ### macOS
 
 Requiere Qt 6.5.3, que se instala universal (x86_64 + arm64). El bundle se compila
-universal y en Apple Silicon se ejecuta **nativo arm64**. `compilar_dev.sh --rosetta`
+universal y en Apple Silicon se ejecuta **nativo arm64**. `compilar.sh --rosetta`
 fuerza el lanzamiento traducido, util solo para reproducir un bug de la rebanada Intel.
 
+Igual que en Windows, se corren desde la raíz del repo: se paran solos en
+`QtClient/` internamente.
+
 ```bash
-./limpiar.sh        # Limpia build/
-./compilar_dev.sh   # Debug rápido, copia plugins Qt mínimos, lanza la app
-./compilar.sh       # Release, en el arbol build-release/ (forwardea a compilar_dev.sh --release)
-./deploy.sh         # Release, genera .app distribuible
+./limpiar.sh             # Limpia build/
+./compilar.sh            # Debug rápido, copia plugins Qt mínimos, lanza la app
+./compilar_release.sh    # Release manual, en el arbol build-release/ (forwardea a compilar.sh --release)
+./deploy.sh              # Release, genera .app distribuible
 ```
 
 En macOS 12+ AGL ya no existe, y Qt lo arrastra igual a traves de `WrapOpenGL::WrapOpenGL`.

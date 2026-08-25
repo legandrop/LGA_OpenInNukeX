@@ -18,6 +18,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+# El script vive en la raiz del repo (junto con deploy.sh y create_dmg.sh, a los
+# que llama por ruta relativa mas abajo). El unico rincon QtClient-relativo es
+# deploy/, donde deploy.sh y create_dmg.sh dejan el .app/.zip/.dmg.
+QTCLIENT_DIR="$SCRIPT_DIR/QtClient"
 
 # APP_NAME es el `.app` (con espacios); ARTIFACT_NAME es la base del nombre de ARCHIVO
 # del .zip/.dmg (con guiones bajos). Estaban conflacionados en una sola variable.
@@ -133,8 +137,9 @@ fi
 # Que VERSION, CMakeLists.txt y el ChangeLog digan lo mismo. Si no coinciden, el asset se
 # llamaria distinto de lo que la app muestra en su Help.
 # En esta app el ChangeLog, el VERSION y sync_version.py viven en la RAIZ del repo: QtClient/
-# es solo el cliente Qt y la raiz es tambien el plugin de Nuke que se publica.
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# es solo el cliente Qt y la raiz es tambien el plugin de Nuke que se publica. El script
+# vive en esa misma raiz, asi que REPO_ROOT es directamente su propio directorio.
+REPO_ROOT="$SCRIPT_DIR"
 if ! python3 "$REPO_ROOT/tools/sync_version.py" --check-only; then
     echo "ERROR: la version esta desincronizada. Corre sync_version y commitea antes de publicar."
     exit 1
@@ -149,9 +154,9 @@ fi
 TAG="v${APP_VERSION}"
 ZIP_NAME="${ARTIFACT_NAME}_v${APP_VERSION}_mac.zip"
 DMG_NAME="${ARTIFACT_NAME}_v${APP_VERSION}_mac.dmg"
-ZIP_PATH="${SCRIPT_DIR}/deploy/${ZIP_NAME}"
-DMG_PATH="${SCRIPT_DIR}/deploy/${DMG_NAME}"
-APP_PATH="${SCRIPT_DIR}/deploy/${APP_NAME}.app"
+ZIP_PATH="${QTCLIENT_DIR}/deploy/${ZIP_NAME}"
+DMG_PATH="${QTCLIENT_DIR}/deploy/${DMG_NAME}"
+APP_PATH="${QTCLIENT_DIR}/deploy/${APP_NAME}.app"
 
 echo "Version detectada: ${APP_VERSION}"
 echo "Tag objetivo:      ${TAG}"
