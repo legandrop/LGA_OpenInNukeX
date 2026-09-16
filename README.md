@@ -17,7 +17,7 @@ Permite abrir archivos `.nk` directamente en **NukeX** desde el explorador de ar
 <br>
 
 Es una aplicación de dos partes:<br>
-&nbsp;&nbsp;&nbsp;• **Servidor en NukeX**: corre desde [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py), escucha por TCP en el puerto `54325` y recibe comandos externos (`run_script||<path>` y `paste_clipboard`).<br>
+&nbsp;&nbsp;&nbsp;• **Servidor en NukeX**: corre desde [init.py](init.py), escucha por TCP en el puerto `54325` y recibe comandos externos (`run_script||<path>` y `paste_clipboard`).<br>
 &nbsp;&nbsp;&nbsp;• **Cliente Qt/C++**: corre fuera de Nuke, administra la asociación de archivos `.nk`, detecta la ruta configurada de NukeX y decide si enviar el archivo a una instancia ya abierta o lanzar una nueva.<br><br>
 
 La lógica de apertura es esta:<br>
@@ -101,10 +101,10 @@ sigue teniendo el `CMakeLists.txt` y los árboles de build.
 
 | Archivo | Funciones / clases clave |
 |---|---|
-| [init.py](/Users/leg4/.nuke/LGA_OpenInNukeX/init.py) | `setup_debug_logging()`, `handle_client()`, `run_script_with_logging()`, `paste_clipboard_with_logging()`, servidor TCP en puerto `54325` |
-| [main.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/main.cpp) | `NukeApp::event()`, `main()` |
-| [nukeopener.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/nukeopener.cpp) | `sendToNuke()`, `onConnected()`, `onResponseReceived()`, `openNukeWithFile()` |
-| [configwindow.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/configwindow.cpp) | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()`, `browseNukePath()` |
-| [nukescanner.cpp](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/src/nukescanner.cpp) | `getCommonNukePaths()`, `scanDirectory()`, `isValidNukeExecutable()`, `isValidNukeAppBundle()` |
-| [CMakeLists.txt](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/CMakeLists.txt) | definición de targets Win/Mac, bundle macOS, recursos, deploy |
-| [Info.plist.in](/Users/leg4/.nuke/LGA_OpenInNukeX/QtClient/cmake/Info.plist.in) | `CFBundleDocumentTypes`, UTI `.nk`, bundle identifier |
+| [init.py](init.py) | `setup_debug_logging()`, `handle_client()`, `run_script_with_logging()`, `paste_clipboard_with_logging()`, servidor TCP en puerto `54325` |
+| [main.cpp](QtClient/src/main.cpp) | `NukeApp::event()`, `main()` |
+| [nukeopener.cpp](QtClient/src/nukeopener.cpp) | `sendToNuke()`, `onConnected()`, `onResponseReceived()`, `openNukeWithFile()` |
+| [configwindow.cpp](QtClient/src/configwindow.cpp) | `applyFileAssociation()`, `executeMacAssociation()`, `executeRegistryCommands()`, `browseNukePath()` |
+| [nukescanner.cpp](QtClient/src/nukescanner.cpp) | `getCommonNukePaths()`, `scanDirectory()`, `isValidNukeExecutable()`, `isValidNukeAppBundle()` |
+| [CMakeLists.txt](QtClient/CMakeLists.txt) | definición de targets Win/Mac, bundle macOS, recursos, deploy |
+| [Info.plist.in](QtClient/cmake/Info.plist.in) | `CFBundleDocumentTypes`, UTI `.nk`, bundle identifier |
