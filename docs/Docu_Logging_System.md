@@ -85,7 +85,7 @@ LGA_OpenInNukeX/
 
 - `ping`: confirma que el servidor esta activo y responde `pong`.
 - `run_script||<path>`: ejecuta `run_script_with_logging(filepath)`, que cierra el proyecto actual y abre el `.nk` indicado.
-- `paste_clipboard`: ejecuta `paste_clipboard_with_logging()`, que llama a `nuke.nodePaste("%clipboard%")` en el proyecto actual. No llama a `scriptClose()` ni a `scriptOpen()`.
+- `paste_clipboard`: ejecuta `paste_clipboard_with_logging()`, que llama a `nuke.nodePaste("%clipboard%")`, carga `LGA_ContactSheet.nk` y conecta los Reads en el proyecto actual. No llama a `scriptClose()` ni a `scriptOpen()`. La respuesta de exito solo se envia si el Group fue creado y conectado; los fallos de Reads/toolset/Group vuelven como `Error:` al cliente.
 
 ### Reglas del logger
 

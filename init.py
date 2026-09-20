@@ -1,9 +1,10 @@
 """
 ______________________________________________________________________________________
 
-  LGA_OpenInNukeX v1.83 | Lega
+  LGA_OpenInNukeX v1.84 | Lega
   Initializes a server in NukeX to handle external commands via port 54325
 
+  v1.84 - paste_clipboard solo confirma exito si creo y conecto LGA_ContactSheet
   v1.70 - paste_clipboard: conecta Reads a LGA_ContactSheet y Viewer al resultado
   v1.69 - Agrega comando paste_clipboard para pegar nodos sin cerrar el proyecto
   v1.68 - logging de la apertura del script
@@ -583,43 +584,47 @@ if nuke.env["nukex"] and not nuke.env["studio"]:
             debug_print(f"Buscando LGA_ContactSheet en: {cs_path}")
 
             if not read_nodes:
-                debug_print("Sin Read nodes: se omite el ContactSheet", level="warning")
-            elif not os.path.exists(cs_path):
-                debug_print(f"LGA_ContactSheet.nk no encontrado: {cs_path}", level="error")
-            else:
-                # Deselect antes de pegar el template para identificarlo limpio
-                for n in nuke.allNodes():
-                    n.setSelected(False)
+                raise RuntimeError(
+                    "The clipboard did not create Read nodes; the Contact Sheet cannot be built."
+                )
+            if not os.path.exists(cs_path):
+                raise RuntimeError(f"LGA_ContactSheet.nk was not found: {cs_path}")
 
-                nuke.nodePaste(cs_path)
-                cs_pasted = nuke.selectedNodes()
-                contact_sheet = next(
-                    (n for n in cs_pasted if n.Class() == "Group" and "ContactSheet" in n.name()),
-                    None
+            # Deselect antes de pegar el template para identificarlo limpio
+            for n in nuke.allNodes():
+                n.setSelected(False)
+
+            nuke.nodePaste(cs_path)
+            cs_pasted = nuke.selectedNodes()
+            contact_sheet = next(
+                (n for n in cs_pasted if n.Class() == "Group" and "ContactSheet" in n.name()),
+                None
+            )
+
+            if contact_sheet is None:
+                raise RuntimeError(
+                    "LGA_ContactSheet.nk did not create the LGA_ContactSheet group."
                 )
 
-                if contact_sheet is None:
-                    debug_print("No se encontro el grupo LGA_ContactSheet en los nodos pegados", level="warning")
-                else:
-                    debug_print(f"LGA_ContactSheet encontrado: {contact_sheet.name()}")
+            debug_print(f"LGA_ContactSheet encontrado: {contact_sheet.name()}")
 
-                    # Conectar cada Read al input correspondiente del grupo
-                    for i, read_node in enumerate(read_nodes):
-                        contact_sheet.setInput(i, read_node)
-                        debug_print(f"  Input {i} -> {read_node.name()}")
+            # Conectar cada Read al input correspondiente del grupo
+            for i, read_node in enumerate(read_nodes):
+                contact_sheet.setInput(i, read_node)
+                debug_print(f"  Input {i} -> {read_node.name()}")
 
-                    # Posicionar el ContactSheet debajo de los Reads
-                    max_ypos = max(n.ypos() for n in read_nodes)
-                    avg_xpos = sum(n.xpos() for n in read_nodes) // len(read_nodes)
-                    contact_sheet.setXYpos(avg_xpos, max_ypos + 200)
-                    debug_print(f"  Posicion ContactSheet: x={avg_xpos} y={max_ypos + 200}")
+            # Posicionar el ContactSheet debajo de los Reads
+            max_ypos = max(n.ypos() for n in read_nodes)
+            avg_xpos = sum(n.xpos() for n in read_nodes) // len(read_nodes)
+            contact_sheet.setXYpos(avg_xpos, max_ypos + 200)
+            debug_print(f"  Posicion ContactSheet: x={avg_xpos} y={max_ypos + 200}")
 
-                    # Conectar el primer Viewer existente al ContactSheet
-                    viewers = nuke.allNodes("Viewer")
-                    if viewers:
-                        viewer = viewers[0]
-                        viewer.setInput(0, contact_sheet)
-                        debug_print(f"  Viewer '{viewer.name()}' conectado al ContactSheet")
+            # Conectar el primer Viewer existente al ContactSheet
+            viewers = nuke.allNodes("Viewer")
+            if viewers:
+                viewer = viewers[0]
+                viewer.setInput(0, contact_sheet)
+                debug_print(f"  Viewer '{viewer.name()}' conectado al ContactSheet")
 
             _flush_log()
             activate_nuke_window_with_logging()

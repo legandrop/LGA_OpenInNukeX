@@ -34,7 +34,7 @@ El servidor escucha en `localhost:54325` y soporta estos comandos:
 
 - `ping`: responde `pong` cuando el servidor esta activo en NukeX.
 - `run_script||<path>`: cierra el proyecto actual con `nuke.scriptClose()` y abre el `.nk` indicado con `nuke.scriptOpen()`.
-- `paste_clipboard`: ejecuta `nuke.nodePaste("%clipboard%")` en el proyecto actual. No cierra ni abre scripts. Este comando permite que herramientas externas, como el Contact Sheet del Review Panel de Hiero, copien clips al clipboard y pidan a NukeX que los pegue como nodos.
+- `paste_clipboard`: ejecuta `nuke.nodePaste("%clipboard%")` en el proyecto actual, carga `LGA_ContactSheet.nk`, conecta los Reads al grupo y el primer Viewer disponible. No cierra ni abre scripts. Solo responde con exito cuando el grupo fue creado y conectado; si faltan Reads, el toolset o el Group, devuelve un error al cliente.
 
 ## Instalación
 
